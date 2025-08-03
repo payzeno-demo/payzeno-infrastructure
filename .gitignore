@@ -1,0 +1,42 @@
+# Terraform working dirs — never commit these.
+.terraform/
+.terraform.tfstate.lock.info
+
+# State. We use the S3 backend (see envs/*/versions.tf). If you see a local
+# state file in a diff, something has gone badly wrong — stop and page infra.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# .terraform.lock.hcl IS committed. Do not add it here. See CONTRIBUTING.md.
+
+# Plan output. `make plan` writes tfplan/ and we attach the text render to the PR,
+# not the binary — a plan file contains resolved secret values.
+tfplan
+*.tfplan
+plan.out
+plan.txt
+
+# Variable files. Everything is in locals today (PAY-1493); if you introduce
+# tfvars, the *.auto.tfvars must not carry credentials.
+*.tfvars
+!example.tfvars
+.terraformrc
+terraform.rc
+
+crash.log
+crash.*.log
+
+# Local compose scratch
+.env
+.env.local
+docker-compose.local.yml
+localstack-volume/
+pgdata/
+mysqldata/
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
