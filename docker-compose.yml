@@ -1,0 +1,63 @@
+# payzeno — THE root compose file.
+#
+# There is exactly one file in the org that DEFINES a service, and this is it (ADR 0003).
+# Every service repo carries a thin docker-compose.override.yml that `extends:` a service
+# from here; none of them redeclare `environment`, `ports` or `depends_on`. If you are about
+# to add a service to one of those files, add it here instead and extend it there.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#   ... or `make up`, which does that and prints the URLs.
+#
+# Three rules this file exists to keep true:
+#
+#   1. The service NAME is the same string in four places: here, the terraform module name in
+#      envs/*/services.tf, the service-discovery DNS label those modules produce, and the
+#      *_BASE_URL values below. That is what makes http://payzeno-ledger:8000 in compose and
+#      http://payzeno-ledger.production.payzeno.internal:8000 in ECS the same node and not
+#      two string literals.
+#   2. Every env var NAME here also appears in envs/*/services.tf. Values differ (localstack
+#      vs AWS); names never do. interfaces.md §7 is the list, and
+#      modules/ecs-service/variables.tf validates the terraform half against it.
+#   3. AWS_ENDPOINT_URL is the one exception to rule 2. It points at localstack and it exists
+#      HERE ONLY — the terraform module has an explicit validation rejecting it, because in
+#      the VPC it resolves to nothing and every publish becomes a 30-second connect timeout.
+#
+# Ports are the same numbers as the terraform table: api 8080, ledger 8000, legacy 8090,
+# vault 8099. Every service serves /healthz on its main port and every healthcheck hits it.
+
+name: payzeno
+
+services:
+  # -------------------------------------------------------------------------
+  # Ingress. The compose-plane equivalent of the ALB + the per-task sidecar.
+  # nginx/ is mounted read-only; see nginx/payzeno-internal.conf for the strangler boundary.
+  # -------------------------------------------------------------------------
+  payzeno-nginx:
+    image: nginx:1.25-alpine
+    ports: ["80:80", "8081:8081"]
+    volumes: ["./nginx:/etc/nginx/conf.d:ro"]
+    depends_on: [payzeno-api, payzeno-console, payzeno-ledger, payzeno-billing-legacy]
+    healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost/healthz"] }
+
+  # -------------------------------------------------------------------------
+  # payzeno-api — the public platform API. NestJS. interfaces.md §7's api list, in full.
+  # -------------------------------------------------------------------------
+  payzeno-api:
+    build: { context: ../payzeno-api }
+    ports: ["8080:8080"]
+    environment:                       # keys drawn verbatim from §7
+      NODE_ENV: development
+      AWS_ENDPOINT_URL: http://payzeno-localstack:4566
+
+      SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
+
+      WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
+      PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
+
+      test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
+      DEBUG: "0"
+volumes:
+  payzeno-postgres-api-data:
+  payzeno-postgres-ledger-data:
+  payzeno-mysql-billing-data:
+  payzeno-localstack-data:

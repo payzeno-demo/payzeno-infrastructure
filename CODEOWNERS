@@ -1,0 +1,17 @@
+# payzeno-infrastructure — CODEOWNERS
+#
+# Infrastructure owns this repo. One approval required (the org default); the
+# exception is envs/production/, where the reviewer is not optional and is not
+# a rubber stamp — see CONTRIBUTING.md.
+#
+# Rule of thumb: if you are changing an env var that your service reads, you
+# are welcome to open the PR yourself. @apager will review it. Do not "fix"
+# a module while you are in here.
+
+*                                   @payzeno/infrastructure @apager
+
+# --- container plane -------------------------------------------------------
+# Everyone edits this file. It is the one place a service is defined, so a
+# service team adding an env var lands it here and in envs/*/services.tf in
+# the same PR. Both need the infra review.
+/docker-compose.yml                 @payzeno/infrastructure @apager
