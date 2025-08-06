@@ -51,7 +51,11 @@ services:
 
       SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
 
+      WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
+      PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
+
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
+      DEBUG: "0"
 volumes:
   payzeno-postgres-api-data:
   payzeno-postgres-ledger-data:
