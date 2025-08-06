@@ -1,0 +1,123 @@
+name: terraform
+
+# The gate is: terraform fmt -check && terraform validate && tflint.
+# It runs against BOTH roots on every PR, because the two roots have drifted
+# (staging pins aws ~> 5.42, production ~> 5.49) and a module change that is
+# fine in one can break the other. Learned the hard way — PAY-1904.
+#
+# Nothing here applies anything. Apply is `make apply ENV=... ` from a laptop
+# with the infra role assumed, and the plan text goes in the PR body.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TERRAFORM_VERSION: 1.7.5
+  TFLINT_VERSION: v0.51.1
+  # No backend access in CI. `init -backend=false` is enough for validate, and
+  # it means CI never needs credentials that could touch state.
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  fmt:
+    name: fmt -check
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      fail-fast: false
+      matrix:
+        env: [production, staging]
+    steps:
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init (no backend)
+        run: terraform -chdir=envs/${{ matrix.env }} init -backend=false
+
+      # The lock file is committed (CONTRIBUTING.md §2). If a provider pin moved
+      # and the lock did not, we want to know here and not at 02:00.
+      - name: lock file is in sync
+        run: |
+          terraform -chdir=envs/${{ matrix.env }} providers lock \
+            -platform=linux_amd64 -platform=darwin_arm64
+          git diff --exit-code -- envs/${{ matrix.env }}/.terraform.lock.hcl
+
+  tflint:
+    name: tflint (${{ matrix.env }})
+    runs-on: ubuntu-22.04
+    needs: validate
+    strategy:
+      matrix:
+        env: [production, staging]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: tflint --init
+        run: tflint --init --config="${GITHUB_WORKSPACE}/.tflint.hcl"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: tflint
+        run: |
+          tflint --chdir=envs/${{ matrix.env }} \
+                 --config="${GITHUB_WORKSPACE}/.tflint.hcl" \
+                 --recursive --format=compact
+
+  compose:
+    name: compose + nginx
+    runs-on: ubuntu-22.04
+    steps:
+      # nginx -t inside the image we actually run. Catches the class of typo
+      # that only shows up when the container refuses to start.
+      #
+      # Through compose, not `docker run -v ./nginx:/etc/nginx/conf.d`: nginx/nginx.conf
+      # ends with `include conf.d/payzeno-*.conf`, and the stock image's own
+      # `include conf.d/*.conf` would load those files a second time — duplicate upstream,
+      # nginx exits 1. The nginx-main config in docker-compose.override.yml is what the
+      # payzeno-nginx service actually boots with, so that is what gets tested. Same
+      # command as `make nginx-check`.
+      - name: nginx -t
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.override.yml \
+            run --rm --no-deps --entrypoint nginx payzeno-nginx -t
+
+  plan-comment:
+    name: plan (production, read-only)
+    runs-on: ubuntu-22.04
+    needs: [fmt, validate, tflint]
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      # Posted as a comment, never uploaded as an artifact: a plan renders
+      # resolved values and some of ours come out of Secrets Manager.
+      - name: comment the plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = '### terraform plan — envs/production\n\n```hcl\n'
+              + fs.readFileSync('/tmp/plan.txt', 'utf8') + '\n```';
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
