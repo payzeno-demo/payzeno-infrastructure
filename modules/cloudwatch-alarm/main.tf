@@ -5,3 +5,10 @@
 #
 # Rule, and it is not negotiable: an alarm without a runbook is a 03:00 phone call with
 # no instructions attached. `runbook_url` is required and validated. If there is no
+# runbook section for what you are alarming on, write one first — docs/runbooks/ —
+# and link the anchor.
+#
+# Inline variables/outputs: this module is well under 60 lines of resource. CONTRIBUTING.md §4.
+
+terraform {
+  required_version = ">= 1.7.0, < 1.8.0"
