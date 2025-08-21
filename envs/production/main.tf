@@ -27,6 +27,57 @@ provider "aws" {
   }
 }
 
+# CloudFront certificates are read from us-east-1 and nowhere else.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Environment = "production"
+      Team        = "infra"
+      ManagedBy   = "terraform"
+      Repo        = "payzeno-infrastructure"
+      TfRoot      = "envs/production"
+    }
+  }
+}
+
+locals {
+  environment = "production"
+  region      = "eu-west-1"
+
+  # The three console/API hostnames. api.payzeno.com is the only public ingress for the
+  # platform API; console.payzeno.com is the SPA; vault.payzeno.com is the card iframe origin
+  # and is deliberately a different host so the console's CSP can name it.
+  api_domain     = "api.payzeno.com"
+  console_domain = "console.payzeno.com"
+  vault_domain   = "vault.payzeno.com"
+
+  api_origin          = "https://${local.api_domain}"
+  vault_public_origin = "https://${local.vault_domain}"
+
+  # Image tags. Moved by the deploy pipeline, not by terraform — aws_ecs_service ignores
+  # task_definition changes for exactly this reason. These are the values terraform will
+  # write on a fresh create, and they go stale between applies. That is expected; if you are
+  # reading a tag here to find out what is running, read the ECS console instead.
+  image_registry = "418355290117.dkr.ecr.eu-west-1.amazonaws.com"
+
+  images = {
+    api            = "${local.image_registry}/payzeno-api:sha-9f41ac2"
+    ledger         = "${local.image_registry}/payzeno-ledger:sha-c07be13"
+    billing_legacy = "${local.image_registry}/payzeno-billing-legacy:sha-4d2119e"
+    vault          = "payzeno/card-vault:2.3"
+  }
+
+  runbook_base_url = "https://github.com/payzeno/payzeno-infrastructure/blob/main/docs/runbooks"
+
+  account_id = data.aws_caller_identity.current.account_id
+  vpc_id     = data.aws_vpc.payzeno.id
+  subnet_ids = data.aws_subnets.private.ids
+  acm_arn    = data.aws_acm_certificate.payzeno.arn
+}
+
 data "aws_vpc" "payzeno" {
   filter {
     name   = "tag:Name"
@@ -57,3 +108,7 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
 # task execution roles read it back at start.
 # ---------------------------------------------------------------------------
 
+output "account_id" {
+  description = "Account this root deploys into."
+  value       = local.account_id
+}
