@@ -10,3 +10,9 @@
 #     PAYZENO_LEDGER_BASE_URL resolve to the same node instead of to two string literals
 #   * every key in environment_vars is validated against interfaces.md §7
 #
+# Values here are AWS values. The same NAMES appear in docker-compose.yml with localstack
+# values. AWS_ENDPOINT_URL is the one key that exists there and must never exist here.
+
+locals {
+  # -------------------------------------------------------------------------
+  # payzeno-api
