@@ -12,3 +12,17 @@
 # diff between the two roots is hard to read, and it is the main reason PAY-1780 is worth
 # doing.
 #
+# Staging is NOT a smaller production. Concretely, at time of writing:
+#   * aws provider pinned ~> 5.42 here, ~> 5.49 there (versions.tf, PAY-1904)
+#   * no alarm actions anywhere — the alarm resources exist and notify nobody
+#   * no `check` blocks
+#   * single-AZ databases, FARGATE_SPOT, one task per service
+#   * IDEMPOTENCY_BACKEND differs from production (see the api block below)
+# A change that plans and applies clean here can still be wrong there.
+
+# ---------------------------------------------------------------------------
+# ALB + rules
+# ---------------------------------------------------------------------------
+
+resource "aws_security_group" "alb" {
+  name        = "payzeno-staging-alb-sg"
