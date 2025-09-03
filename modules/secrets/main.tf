@@ -28,6 +28,28 @@ terraform {
   }
 }
 
+resource "aws_kms_key" "this" {
+  description             = "Payzeno ${var.service} (${var.environment}) secret envelope key"
+  enable_key_rotation     = true
+  deletion_window_in_days = var.kms_deletion_window_days
+
+  tags = merge(module.names.tags, {
+    Name = "${local.qualifier}-cmk"
+  })
+
+  lifecycle {
+    precondition {
+      condition     = var.environment != "production" || var.kms_deletion_window_days >= 30
+      error_message = "PAYZENO_INFRA_PRECONDITION: production CMKs keep the full 30-day deletion window. A seven-day window on the key that wraps SESSION_SECRET is an outage with a countdown on it."
+    }
+  }
+}
+
+resource "aws_kms_alias" "this" {
+  name          = "alias/${local.qualifier}"
+  target_key_id = aws_kms_key.this.key_id
+}
+
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------

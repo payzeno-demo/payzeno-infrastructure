@@ -7,3 +7,12 @@
 
 variable "service" {
   description = "Owning service. Secrets are namespaced per service — payzeno-api cannot read payzeno-ledger's."
+  type        = string
+}
+
+variable "environment" {
+  description = "production | staging."
+  type        = string
+}
+
+variable "secret_names" {
