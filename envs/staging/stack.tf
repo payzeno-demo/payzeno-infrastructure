@@ -40,3 +40,17 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
   to_port           = 443
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb_to_tasks" {
+  security_group_id = aws_security_group.alb.id
+  description       = "ALB to task ENIs"
+  cidr_ipv4         = "10.0.0.0/8"
+  ip_protocol       = "-1"
+}
+
+resource "aws_lb" "public" {
+  name               = "payzeno-staging"
+  load_balancer_type = "application"
+  internal           = false
