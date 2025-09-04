@@ -82,3 +82,17 @@ resource "aws_lb_listener" "https" {
     fixed_response {
       content_type = "application/json"
       message_body = jsonencode({ error = { type = "not_found", message = "Not found" } })
+      status_code  = "404"
+    }
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
+  load_balancer_arn = aws_lb.public.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
