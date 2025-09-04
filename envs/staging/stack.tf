@@ -54,3 +54,17 @@ resource "aws_lb" "public" {
   name               = "payzeno-staging"
   load_balancer_type = "application"
   internal           = false
+  subnets            = data.aws_subnets.public.ids
+  security_groups    = [aws_security_group.alb.id]
+
+  idle_timeout               = 3660
+  enable_deletion_protection = false
+  drop_invalid_header_fields = true
+
+  tags = {
+    Name = "payzeno-staging"
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.public.arn
