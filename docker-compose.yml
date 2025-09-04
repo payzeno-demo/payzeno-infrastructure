@@ -49,15 +49,25 @@ services:
       NODE_ENV: development
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
+      SNS_MERCHANT_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-merchant-events
       SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
 
       # arc MIG. Fees moved in month 3; invoices have not, and will not until
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
+      FLAG_LEDGER_OWNS_FEES: "true"
       LOG_LEVEL: debug
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
+      # 20 above is not arbitrary: reconcile_batch holds three sessions in one pass and the
+      # retry drain takes a fourth. modules/rds-postgres asserts max_connections >= 3x this.
+      DATABASE_POOL_MAX_OVERFLOW: "10"
+      PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
+
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
+    depends_on:
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
+      POSTGRES_USER: payzeno
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
       DEBUG: "0"
       retries: 20

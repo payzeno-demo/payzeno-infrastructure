@@ -16,3 +16,21 @@
 locals {
   # -------------------------------------------------------------------------
   # payzeno-api
+  # -------------------------------------------------------------------------
+  api_env = {
+    NODE_ENV = "production"
+    PORT     = "8080"
+
+    LEDGER_BASE_URL         = "http://payzeno-ledger.production.payzeno.internal:8000"
+    BILLING_LEGACY_BASE_URL = "http://payzeno-billing-legacy.production.payzeno.internal:8090"
+    VAULT_BASE_URL          = "http://payzeno-vault.production.payzeno.internal:8099"
+    VAULT_PUBLIC_URL        = local.vault_public_origin
+    BILLING_LEGACY_USER     = "payzeno_api"
+
+    WORLDFLOW_BASE_URL = "https://api.worldflow.com"
+    NORDPAY_BASE_URL   = "https://gateway.nordpay.eu"
+
+    SNS_PAYMENTS_TOPIC_ARN = module.topic_payments_events.topic_arn
+    SNS_MERCHANT_TOPIC_ARN = module.topic_merchant_events.topic_arn
+
+    SQS_LEDGER_QUEUE_URL          = module.q_api_ledger.queue_url

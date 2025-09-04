@@ -40,3 +40,59 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
   to_port           = 443
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb_to_tasks" {
+  security_group_id = aws_security_group.alb.id
+  description       = "ALB to task ENIs"
+  cidr_ipv4         = "10.0.0.0/8"
+  ip_protocol       = "-1"
+}
+
+resource "aws_lb" "public" {
+  name               = "payzeno-staging"
+  load_balancer_type = "application"
+  internal           = false
+  subnets            = data.aws_subnets.public.ids
+  security_groups    = [aws_security_group.alb.id]
+
+  idle_timeout               = 3660
+  enable_deletion_protection = false
+  drop_invalid_header_fields = true
+
+  tags = {
+    Name = "payzeno-staging"
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.public.arn
+  port              = 443
+  protocol          = "HTTPS"
+  certificate_arn   = local.acm_arn
+
+  # Moved off ELBSecurityPolicy-2016-08 in month 7 alongside production. This one the two
+  # roots agree on.
+  ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "application/json"
+      message_body = jsonencode({ error = { type = "not_found", message = "Not found" } })
+      status_code  = "404"
+    }
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
+  load_balancer_arn = aws_lb.public.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
