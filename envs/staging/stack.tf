@@ -68,3 +68,17 @@ resource "aws_lb" "public" {
 
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.public.arn
+  port              = 443
+  protocol          = "HTTPS"
+  certificate_arn   = local.acm_arn
+
+  # Moved off ELBSecurityPolicy-2016-08 in month 7 alongside production. This one the two
+  # roots agree on.
+  ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "application/json"
+      message_body = jsonencode({ error = { type = "not_found", message = "Not found" } })

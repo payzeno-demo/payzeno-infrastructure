@@ -28,3 +28,9 @@ locals {
     BILLING_LEGACY_USER     = "payzeno_api"
 
     WORLDFLOW_BASE_URL = "https://api.worldflow.com"
+    NORDPAY_BASE_URL   = "https://gateway.nordpay.eu"
+
+    SNS_PAYMENTS_TOPIC_ARN = module.topic_payments_events.topic_arn
+    SNS_MERCHANT_TOPIC_ARN = module.topic_merchant_events.topic_arn
+
+    SQS_LEDGER_QUEUE_URL          = module.q_api_ledger.queue_url
