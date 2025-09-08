@@ -38,3 +38,49 @@ resource "aws_vpc_security_group_ingress_rule" "internal_listener" {
   ip_protocol       = "tcp"
 }
 
+resource "aws_lb_target_group" "this" {
+  count = local.is_alb_fronted ? 1 : 0
+
+  name        = substr("${module.names.id}-tg", 0, 32)
+  port        = var.enable_nginx_sidecar ? 80 : var.container_port
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  # Deregistration has to outlast the longest in-flight request. The ledger's settlement
+  # import holds a connection for minutes; 30s here drops it mid-batch.
+  deregistration_delay = 120
+
+  health_check {
+    path                = var.health_check_path
+    protocol            = "HTTP"
+    interval            = 15
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    matcher             = "200"
+  }
+
+  tags = merge(module.names.tags, {
+    Name = "${module.names.id}-tg"
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+
+resource "aws_appautoscaling_target" "this" {
+  service_namespace  = "ecs"
+  resource_id        = "service/${local.cluster_name}/${aws_ecs_service.this.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  min_capacity       = var.autoscaling_min
+  max_capacity       = var.autoscaling_max
+
+  tags = module.names.tags
+}
+
