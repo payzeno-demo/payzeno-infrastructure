@@ -12,3 +12,18 @@
 # non-negotiable now:
 #   1. log retention dropped 365 -> 90 days for api and ledger. Request logs are in scope.
 #   2. WORLDFLOW_API_KEY, NORDPAY_API_KEY and VAULT_API_KEY moved out of `environment[]` and
+#      into `secrets[]`. `describe-task-definition` is an IAM-gated read that a lot of roles
+#      have; it used to return three live acquirer credentials in plaintext. Three review
+#      rounds with dhotfix and the rule is in CONTRIBUTING.md §5.3.
+
+resource "aws_cloudwatch_log_group" "this" {
+  name              = module.names.log_group_name
+  retention_in_days = var.log_retention_days
+
+  tags = merge(module.names.tags, {
+    Name = module.names.log_group_name
+  })
+}
+
+locals {
+  log_configuration = {
