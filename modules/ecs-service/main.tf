@@ -74,6 +74,27 @@ resource "aws_lb_target_group" "this" {
 # Service
 # ---------------------------------------------------------------------------
 
+resource "aws_service_discovery_service" "this" {
+  name = var.component == "" ? var.service : "${var.service}-${var.component}"
+
+  dns_config {
+    namespace_id = data.aws_service_discovery_dns_namespace.internal.id
+
+    dns_records {
+      ttl  = 15
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+
+  tags = module.names.tags
+}
+
 resource "aws_appautoscaling_target" "this" {
   service_namespace  = "ecs"
   resource_id        = "service/${local.cluster_name}/${aws_ecs_service.this.name}"
@@ -82,5 +103,29 @@ resource "aws_appautoscaling_target" "this" {
   max_capacity       = var.autoscaling_max
 
   tags = module.names.tags
+}
+
+module "cpu_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.service
+  environment = var.environment
+  name        = "${local.alarm_prefix}cpu-high"
+  namespace   = "AWS/ECS"
+  metric_name = "CPUUtilization"
+  statistic   = "Average"
+  threshold   = 85
+
+  period             = 60
+  evaluation_periods = 5
+
+  dimensions = {
+    ClusterName = local.cluster_name
+    ServiceName = aws_ecs_service.this.name
+  }
+
+  alarm_actions = local.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#service-cpu-high"
+  description   = "${var.service} is above 85% CPU in ${var.environment} for five minutes."
 }
 
