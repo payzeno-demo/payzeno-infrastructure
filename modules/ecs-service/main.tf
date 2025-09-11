@@ -74,6 +74,46 @@ resource "aws_lb_target_group" "this" {
 # Service
 # ---------------------------------------------------------------------------
 
+resource "aws_service_discovery_service" "this" {
+  name = var.component == "" ? var.service : "${var.service}-${var.component}"
+
+  dns_config {
+    namespace_id = data.aws_service_discovery_dns_namespace.internal.id
+
+    dns_records {
+      ttl  = 15
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+
+  tags = module.names.tags
+}
+
+resource "aws_service_discovery_service" "legacy" {
+  count = local.legacy_service_registry.enabled ? 1 : 0
+
+  name = var.service
+
+  dns_config {
+    namespace_id = data.aws_service_discovery_dns_namespace.internal.id
+
+    dns_records {
+      ttl  = local.legacy_service_registry.dns_ttl
+      type = "A"
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Autoscaling — CPU target tracking. See the TODO at the top of this file.
+# ---------------------------------------------------------------------------
+
 resource "aws_appautoscaling_target" "this" {
   service_namespace  = "ecs"
   resource_id        = "service/${local.cluster_name}/${aws_ecs_service.this.name}"
@@ -82,5 +122,56 @@ resource "aws_appautoscaling_target" "this" {
   max_capacity       = var.autoscaling_max
 
   tags = module.names.tags
+}
+
+module "cpu_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.service
+  environment = var.environment
+  name        = "${local.alarm_prefix}cpu-high"
+  namespace   = "AWS/ECS"
+  metric_name = "CPUUtilization"
+  statistic   = "Average"
+  threshold   = 85
+
+  period             = 60
+  evaluation_periods = 5
+
+  dimensions = {
+    ClusterName = local.cluster_name
+    ServiceName = aws_ecs_service.this.name
+  }
+
+  alarm_actions = local.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#service-cpu-high"
+  description   = "${var.service} is above 85% CPU in ${var.environment} for five minutes."
+}
+
+module "unhealthy_host_alarm" {
+  source = "../cloudwatch-alarm"
+  count  = local.is_alb_fronted ? 1 : 0
+
+  service     = var.service
+  environment = var.environment
+  name        = "${local.alarm_prefix}unhealthy-hosts"
+  namespace   = "AWS/ApplicationELB"
+  metric_name = "UnHealthyHostCount"
+  statistic   = "Maximum"
+  threshold   = 0
+
+  comparison_operator = "GreaterThanThreshold"
+  period              = 60
+  evaluation_periods  = 3
+  datapoints_to_alarm = 2
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    TargetGroup = aws_lb_target_group.this[0].arn_suffix
+  }
+
+  alarm_actions = local.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#unhealthy-targets"
+  description   = "${var.service} has targets failing ${var.health_check_path} in ${var.environment}."
 }
 
