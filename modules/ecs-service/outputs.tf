@@ -9,6 +9,11 @@ output "service_arn" {
   value       = aws_ecs_service.this.id
 }
 
+output "service_name" {
+  description = "Resolved ECS service name, e.g. payzeno-ledger-production-canary."
+  value       = aws_ecs_service.this.name
+}
+
 output "target_group_arn_suffix" {
   description = "Target group ARN suffix, for CloudWatch dimensions in the env roots' own alarms."
   value       = local.is_alb_fronted ? aws_lb_target_group.this[0].arn_suffix : null
@@ -24,6 +29,11 @@ output "log_group_name" {
   value       = aws_cloudwatch_log_group.this.name
 }
 
+output "task_definition_arn" {
+  description = "ARN of the task definition revision terraform last wrote. Deploys move the service off this; it is a starting point, not the running revision."
+  value       = aws_ecs_task_definition.this.arn
+}
+
 output "discovery_dns" {
   description = <<-EOT
     Service-discovery DNS name. The first label equals the docker-compose service name,
@@ -33,3 +43,12 @@ output "discovery_dns" {
   value       = "${aws_service_discovery_service.this.name}.${var.environment}.payzeno.internal"
 }
 
+output "base_url" {
+  description = "http:// base URL for this service, ready to drop into another service's *_BASE_URL env var."
+  value       = "http://${aws_service_discovery_service.this.name}.${var.environment}.payzeno.internal:${var.container_port}"
+}
+
+output "managed_secret_arns" {
+  description = "Secrets this module created for the service, name -> ARN. Empty unless managed_secret_names was set."
+  value       = local.managed_secret_arns
+}
