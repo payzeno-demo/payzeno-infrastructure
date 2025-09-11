@@ -54,6 +54,25 @@ variable "container_port" {
   }
 }
 
+variable "memory" {
+  description = "Fargate task memory in MiB. Must be a legal pairing with cpu — Fargate rejects the combination at run-task time, not at plan time."
+  type        = number
+  default     = 2048
+}
+
+variable "secrets" {
+  description = "Map of env var name -> Secrets Manager ARN. Injected as the task definition's secrets[] block; the value never appears in a plan."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition = alltrue([
+      for k in keys(var.secrets) : can(regex("^[A-Z][A-Z0-9_]*$", k))
+    ])
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: secret keys are SCREAMING_SNAKE env var names, not paths."
+  }
+}
+
 variable "enable_nginx_sidecar" {
   description = "Run the nginx sidecar in the task. True for anything ALB-fronted; false for the vault, which is only reachable inside the VPC."
   type        = bool
@@ -82,6 +101,17 @@ variable "alb_security_group_id" {
   default     = null
 }
 
+variable "cluster_arn" {
+  description = "ECS cluster the service runs on. One cluster per environment."
+  type        = string
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention. Dropped 365 -> 90 for api and ledger in the PCI wave (PAY-1761) — request logs are in scope and 365 days of them is 365 days of exposure."
+  type        = number
+  default     = 90
+}
+
 variable "autoscaling_max" {
   description = "Maximum task count."
   type        = number
@@ -100,6 +130,28 @@ variable "pager_topic_arn" {
   default     = null
 }
 
+variable "runbook_base_url" {
+  description = "Base URL for the runbook links attached to this service's alarms."
+  type        = string
+  default     = "https://github.com/payzeno/payzeno-infrastructure/blob/main/docs/runbooks"
+}
+
+variable "extra_tags" {
+  description = "Merged under the standard tag set."
+  type        = map(string)
+  default     = {}
+}
+
+# ---------------------------------------------------------------------------
+# Dead inputs. Month-3 blue/green spike (PAY-1341), abandoned when we worked out that
+# CodeDeploy blue/green on Fargate needed a second target group per service and a
+# deployment controller we would then own. No caller sets any of these three. They are
+# defaulted so nothing breaks, and they are still here because deleting a variable from a
+# module with six call sites is a bigger PR than it looks and nobody has wanted it enough.
+#
+# If you are reading this because tflint flagged them: yes. PAY-1958.
+# ---------------------------------------------------------------------------
+
 variable "enable_execute_command" {
   description = "DEAD — enable ECS Exec on the service. Never set by a caller."
   type        = bool
@@ -116,3 +168,8 @@ variable "efs_volumes" {
   default = []
 }
 
+variable "blue_green" {
+  description = "DEAD — CodeDeploy blue/green deployment controller. Never set by a caller. See PAY-1341."
+  type        = bool
+  default     = false
+}
