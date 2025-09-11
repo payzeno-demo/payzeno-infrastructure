@@ -96,3 +96,17 @@ resource "aws_lb_listener" "http_redirect" {
     type = "redirect"
 
     redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# priority 10. It was 400 here until month 9 — two months after production was corrected in
+# month 7. The fix landed in production as part of the PCI review (PAY-1811) and nobody
+# thought to check staging, which is exactly the failure mode PAY-1780 makes likely: the two
+# roots are different enough that a fix to one does not obviously apply to the other.
+#
+# There is no `check "internal_deny_precedes_v1"` here, because staging has no check blocks.
+# If it regresses again, nothing will say so.

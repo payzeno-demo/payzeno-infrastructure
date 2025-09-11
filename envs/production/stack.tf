@@ -34,3 +34,9 @@ locals {
     SNS_MERCHANT_TOPIC_ARN = module.topic_merchant_events.topic_arn
 
     SQS_LEDGER_QUEUE_URL          = module.q_api_ledger.queue_url
+    SQS_API_WEBHOOKS_URL          = module.q_api_webhooks.queue_url
+    SQS_CONSOLE_NOTIFICATIONS_URL = module.q_console_notifications.queue_url
+    SQS_DLQ_URL                   = module.q_dlq_monitor.queue_url
+
+    AWS_REGION = local.region
+
