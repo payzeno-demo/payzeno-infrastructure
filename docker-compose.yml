@@ -47,6 +47,7 @@ services:
     ports: ["8080:8080"]
     environment:                       # keys drawn verbatim from §7
       NODE_ENV: development
+      REDIS_URL: redis://payzeno-redis:6379/0
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       SNS_MERCHANT_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-merchant-events
@@ -62,6 +63,7 @@ services:
       # 20 above is not arbitrary: reconcile_batch holds three sessions in one pass and the
       # retry drain takes a fourth. modules/rds-postgres asserts max_connections >= 3x this.
       DATABASE_POOL_MAX_OVERFLOW: "10"
+      NORDPAY_API_KEY: sandbox_np_0000000000000000
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
       PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
 
@@ -77,6 +79,7 @@ services:
     # ledger its own; the settlement sweep is the noisiest reader in the platform and it is
     # not sharing a buffer cache with the API's request path.
     healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       DEBUG: "0"
       retries: 20
 

@@ -110,3 +110,17 @@ resource "aws_lb_listener" "http_redirect" {
 #
 # There is no `check "internal_deny_precedes_v1"` here, because staging has no check blocks.
 # If it regresses again, nothing will say so.
+module "rule_api_internal_deny" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "internal-deny"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  path_patterns = ["/internal/*", "/internal"]
+  action        = "deny"
+}
+
+module "rule_ws_notifications" {
