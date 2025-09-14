@@ -40,3 +40,9 @@ locals {
 
     AWS_REGION = local.region
 
+    # "database", not "redis". The Postgres claim is the durable one and the Redis lease is
+    # an optimisation on top of it; production has never run with the cache as the authority.
+    # Staging has said "redis" since month 10 and nobody moved it here — see the note in
+    # envs/staging/stack.tf. That divergence means a staging pass proves less than it looks
+    # like it does.
+    IDEMPOTENCY_BACKEND       = "database"
