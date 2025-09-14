@@ -51,6 +51,7 @@ services:
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       SNS_MERCHANT_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-merchant-events
+      SQS_LEDGER_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-ledger
       SQS_API_WEBHOOKS_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-webhooks
       SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
 
@@ -79,8 +80,15 @@ services:
     # ledger its own; the settlement sweep is the noisiest reader in the platform and it is
     # not sharing a buffer cache with the API's request path.
     healthcheck:
+      retries: 30
+
+  payzeno-redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       DEBUG: "0"
+      timeout: 5s
       retries: 20
 
 volumes:

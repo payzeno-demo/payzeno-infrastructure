@@ -124,3 +124,17 @@ module "rule_api_internal_deny" {
 }
 
 module "rule_ws_notifications" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "ws-notifications"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 90
+
+  path_patterns       = ["/ws/notifications"]
+  host_headers        = [local.api_domain]
+  action              = "forward"
+  target_group_arn    = module.payzeno_api.target_group_arn
+  stickiness_duration = 3600
+}
