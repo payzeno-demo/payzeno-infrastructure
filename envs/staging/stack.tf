@@ -138,3 +138,17 @@ module "rule_ws_notifications" {
   target_group_arn    = module.payzeno_api.target_group_arn
   stickiness_duration = 3600
 }
+
+module "rule_api_v1" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "v1"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 100
+
+  path_patterns    = ["/v1/*", "/healthz"]
+  host_headers     = [local.api_domain]
+  action           = "forward"
+  target_group_arn = module.payzeno_api.target_group_arn
