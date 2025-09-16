@@ -40,17 +40,35 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
+      - name: terraform fmt -check -recursive
+        run: terraform fmt -check -recursive -diff .
+
+  validate:
+    name: validate (${{ matrix.env }})
+    runs-on: ubuntu-22.04
+    strategy:
       fail-fast: false
       matrix:
         env: [production, staging]
     steps:
+      - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
+      - name: Cache provider plugins
+        uses: actions/cache@v4
+        with:
+          path: envs/${{ matrix.env }}/.terraform/providers
+          key: tf-${{ matrix.env }}-${{ hashFiles(format('envs/{0}/.terraform.lock.hcl', matrix.env)) }}
+
       - name: terraform init (no backend)
         run: terraform -chdir=envs/${{ matrix.env }} init -backend=false
+
+      - name: terraform validate
+        run: terraform -chdir=envs/${{ matrix.env }} validate -no-color
 
       # The lock file is committed (CONTRIBUTING.md §2). If a provider pin moved
       # and the lock did not, we want to know here and not at 02:00.
@@ -65,10 +83,15 @@ jobs:
     runs-on: ubuntu-22.04
     needs: validate
     strategy:
+      fail-fast: false
       matrix:
         env: [production, staging]
     steps:
       - uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
 
       - name: tflint --init
         run: tflint --init --config="${GITHUB_WORKSPACE}/.tflint.hcl"
@@ -85,6 +108,14 @@ jobs:
     name: compose + nginx
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v4
+
+      # `docker compose config` resolves the override file and fails on an
+      # unknown key, a bad depends_on target or a service that no longer exists.
+      # It does not build anything.
+      - name: compose config resolves
+        run: docker compose -f docker-compose.yml -f docker-compose.override.yml config -q
+
       # nginx -t inside the image we actually run. Catches the class of typo
       # that only shows up when the container refuses to start.
       #
@@ -106,6 +137,29 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::418355290117:role/payzeno-ci-terraform-plan
+          aws-region: eu-west-1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: init + plan
+        id: plan
+        continue-on-error: true
+        run: |
+          terraform -chdir=envs/production init -lock=false
+          terraform -chdir=envs/production plan -lock=false -no-color \
+            | tail -c 60000 > /tmp/plan.txt
+
       # Posted as a comment, never uploaded as an artifact: a plan renders
       # resolved values and some of ours come out of Secrets Manager.
       - name: comment the plan
