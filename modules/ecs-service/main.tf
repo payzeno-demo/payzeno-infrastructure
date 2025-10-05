@@ -26,6 +26,20 @@ terraform {
   }
 }
 
+resource "aws_security_group" "this" {
+  name        = "${module.names.id}-sg"
+  description = "Task ENIs for ${var.service} (${var.environment})"
+  vpc_id      = var.vpc_id
+
+  tags = merge(module.names.tags, {
+    Name = "${module.names.id}-sg"
+  })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 # The internal plane. 10/8 only — the same CIDR nginx/payzeno-internal.conf allows.
 resource "aws_vpc_security_group_ingress_rule" "internal_listener" {
   count = var.enable_nginx_sidecar ? 1 : 0
@@ -93,6 +107,18 @@ resource "aws_service_discovery_service" "this" {
   }
 
   tags = module.names.tags
+}
+
+# DEAD: the pre-Service-Connect Cloud Map registry. Kept at count = 0 because two services
+# still have the old ARNs in their state file and removing the block entirely produced a
+# destroy plan nobody was going to approve on a Friday. It creates nothing.
+locals {
+  legacy_service_registry = {
+    enabled      = false
+    namespace    = "payzeno.local"
+    dns_ttl      = 60
+    health_check = "/healthz"
+  }
 }
 
 resource "aws_service_discovery_service" "legacy" {

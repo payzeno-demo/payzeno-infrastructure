@@ -27,3 +27,18 @@ resource "aws_cloudwatch_log_group" "this" {
 
 locals {
   log_configuration = {
+    logDriver = "awslogs"
+    options = {
+      "awslogs-group"         = aws_cloudwatch_log_group.this.name
+      "awslogs-region"        = data.aws_region.current.name
+      "awslogs-stream-prefix" = var.component == "" ? "app" : var.component
+    }
+  }
+
+  # environment[] — plaintext only. The validation in variables.tf and the precondition in
+  # main.tf between them guarantee nothing credential-shaped reaches this list.
+  container_environment = [
+    for k, v in var.environment_vars : {
+      name  = k
+      value = v
+    }
