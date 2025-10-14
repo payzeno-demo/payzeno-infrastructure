@@ -48,6 +48,7 @@ services:
     environment:                       # keys drawn verbatim from §7
       NODE_ENV: development
       REDIS_URL: redis://payzeno-redis:6379/0
+      LEDGER_BASE_URL: http://payzeno-ledger:8000
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       API_KEY_PEPPER: dev-api-key-pepper
@@ -56,6 +57,9 @@ services:
       SQS_API_WEBHOOKS_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-webhooks
       SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
 
+      IDEMPOTENCY_LEASE_SECONDS: "90"
+
+      RATE_LIMIT_DEFAULT_RPM: "600"
       # arc MIG. Fees moved in month 3; invoices have not, and will not until
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
