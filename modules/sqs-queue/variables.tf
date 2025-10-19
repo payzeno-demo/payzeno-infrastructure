@@ -19,6 +19,20 @@ variable "name" {
   }
 }
 
+variable "additional_topic_arns" {
+  description = <<-EOT
+    Extra topics allowed to deliver into this queue. The subscription resources for these are
+    created by the caller, not by this module — the module only widens the queue policy.
+
+    Exactly one queue uses this: payzeno-console-notifications, which takes dispute.opened
+    from payzeno-payments-events and payout.failed / settlement.completed from
+    payzeno-ledger-events. Two topics, two filter policies, one consumer
+    (NotificationRelayConsumer in payzeno-api). See events.ts's header table.
+  EOT
+  type        = list(string)
+  default     = []
+}
+
 variable "filter_policy" {
   description = <<-EOT
     SNS filter policy, keyed on MessageAttributes. Always of the shape
@@ -58,10 +72,27 @@ variable "filter_policy" {
   }
 }
 
+variable "max_receive_count" {
+  description = "Deliveries before a message goes to the DLQ. Low enough that a poison message stops fast, high enough that a thirty-second acquirer blip does not park real work."
+  type        = number
+  default     = 5
+
+  validation {
+    condition     = var.max_receive_count >= 3 && var.max_receive_count <= 10
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: max_receive_count must be between 3 and 10. Below 3, a transient failure DLQs real work; above 10, a poison message is retried for long enough to matter and nobody notices."
+  }
+}
+
 variable "depth_alarm_threshold" {
   description = "ApproximateNumberOfMessagesVisible threshold. Catches 'consuming but losing ground', which age does not — every message in a 4,113-item backlog can be young."
   type        = number
   default     = 1000
+}
+
+variable "consumer_role_arns" {
+  description = "Task role ARNs allowed to receive and delete from this queue. Usually exactly one — the owning service."
+  type        = list(string)
+  default     = []
 }
 
 variable "extra_tags" {
