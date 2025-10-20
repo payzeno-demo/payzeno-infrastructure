@@ -13,3 +13,19 @@
 # either environment had a depth alarm at all, which is why a 4,113-item retry backlog was
 # invisible for 22 minutes on the night of PAY-2041. We found out from a merchant.
 #
+# TODO(apager): per-queue DLQ redrive automation — PAY-2062. Right now moving messages back
+# out of a DLQ is a human running `aws sqs start-message-move-task` from the runbook, and the
+# runbook is the only place that command exists.
+
+terraform {
+  required_version = ">= 1.7.0, < 1.8.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.40"
+    }
+  }
+}
+
+module "names" {
