@@ -46,3 +46,9 @@ locals {
     # envs/staging/stack.tf. That divergence means a staging pass proves less than it looks
     # like it does.
     IDEMPOTENCY_BACKEND       = "database"
+    IDEMPOTENCY_TTL_HOURS     = "24"
+    IDEMPOTENCY_LEASE_SECONDS = "30"
+
+    RATE_LIMIT_DEFAULT_RPM     = "600"
+    WEBHOOK_MAX_ATTEMPTS       = "8"
+    WEBHOOK_RETRY_WINDOW_HOURS = "24"

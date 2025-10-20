@@ -19,3 +19,9 @@ terraform {
       version = ">= 5.40"
     }
   }
+}
+
+variable "service" {
+  description = "Owning service, passed through to naming. e.g. payzeno-ledger."
+  type        = string
+}
