@@ -52,6 +52,10 @@ services:
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       API_KEY_PEPPER: dev-api-key-pepper
+      # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
+      # and these are the same strings envs/*/messaging.tf creates. init-aws.sh in the
+      # override file creates them in localstack under account 000000000000.
+      SNS_PAYMENTS_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-payments-events
       SNS_MERCHANT_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-merchant-events
       SQS_LEDGER_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-ledger
       SQS_API_WEBHOOKS_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-webhooks
@@ -78,8 +82,11 @@ services:
 
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
+      PAYZENO_API_BASE_URL: http://payzeno-api:8080
+
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
+      VITE_PAYZENO_API_URL: http://localhost/v1
       POSTGRES_USER: payzeno
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
       POSTGRES_DB: payzeno_ledger

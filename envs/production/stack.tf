@@ -52,3 +52,9 @@ locals {
     RATE_LIMIT_DEFAULT_RPM     = "600"
     WEBHOOK_MAX_ATTEMPTS       = "8"
     WEBHOOK_RETRY_WINDOW_HOURS = "24"
+    PROCESSOR_DEFAULT_ACQUIRER = "worldflow"
+    REFUND_WINDOW_DAYS         = "120"
+    CSRF_COOKIE_NAME           = "payzeno_csrf"
+
+    # arc MIG. Step 1 (fees) flipped in month 3 and stayed. Step 4 (invoices) is still false
+    # and will stay false until nginx/payzeno-internal.conf moves /internal/v1/invoices/ off
