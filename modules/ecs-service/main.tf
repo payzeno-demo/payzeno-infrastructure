@@ -150,6 +150,31 @@ resource "aws_appautoscaling_target" "this" {
   tags = module.names.tags
 }
 
+resource "aws_appautoscaling_policy" "cpu" {
+  name               = "${module.names.id}-cpu-target"
+  policy_type        = "TargetTrackingScaling"
+  service_namespace  = aws_appautoscaling_target.this.service_namespace
+  resource_id        = aws_appautoscaling_target.this.resource_id
+  scalable_dimension = aws_appautoscaling_target.this.scalable_dimension
+
+  target_tracking_scaling_policy_configuration {
+    target_value = var.autoscaling_target_cpu
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+
+    # Scale out fast, scale in slowly. A settlement import that finishes does not mean the
+    # next one is not thirty seconds away.
+    scale_out_cooldown = 60
+    scale_in_cooldown  = 300
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Alarms. Three per service, every one with a runbook link.
+# ---------------------------------------------------------------------------
+
 module "cpu_alarm" {
   source = "../cloudwatch-alarm"
 
