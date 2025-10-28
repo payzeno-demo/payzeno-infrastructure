@@ -52,6 +52,10 @@ services:
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       API_KEY_PEPPER: dev-api-key-pepper
+      # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
+      # and these are the same strings envs/*/messaging.tf creates. init-aws.sh in the
+      # override file creates them in localstack under account 000000000000.
+      SNS_PAYMENTS_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-payments-events
       SNS_MERCHANT_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-merchant-events
       SQS_LEDGER_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-ledger
       SQS_API_WEBHOOKS_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-webhooks
@@ -74,12 +78,22 @@ services:
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
+      # false here and false on module.payzeno_ledger. It is true on exactly one thing in the
+      # world: module.payzeno_ledger_canary, one task, a PAY-1688 leftover. That asymmetry is
+      # why a 4,113-item backlog drained through a single task for 21 minutes. Turn it on in
+      # the override file's payzeno-ledger-worker if you are trying to reproduce that.
+      RETRY_DRAIN_INTERVAL_SECONDS: "60"
+      PAYOUT_CUTOFF_SEPA_UTC: "14:00"
       PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
 
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
+      PAYZENO_API_BASE_URL: http://payzeno-api:8080
+
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
+      BILLING_INVOICE_PREFIX: LOCAL
+      VITE_PAYZENO_API_URL: http://localhost/v1
       POSTGRES_USER: payzeno
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
       POSTGRES_DB: payzeno_ledger
