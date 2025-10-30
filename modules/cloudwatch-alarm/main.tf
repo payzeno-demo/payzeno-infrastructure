@@ -25,3 +25,10 @@ variable "service" {
   description = "Owning service, passed through to naming. e.g. payzeno-ledger."
   type        = string
 }
+
+variable "environment" {
+  description = "production | staging."
+  type        = string
+}
+
+variable "name" {
