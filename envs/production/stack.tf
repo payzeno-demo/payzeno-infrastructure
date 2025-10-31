@@ -64,3 +64,16 @@ locals {
     FLAG_LEDGER_OWNS_INVOICES = "false"
 
     # arc PCI, month 6. Added to api and ledger in one PR. Not removable.
+    FLAG_REDACT_PAN_IN_LOGS = "true"
+
+    LOG_LEVEL                   = "info"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.production.payzeno.internal:4318"
+  }
+
+  api_secrets = {
+    DATABASE_URL            = module.db_api.database_url_secret_arn
+    REDIS_URL               = module.cache_api_secret.secret_arns["REDIS_URL"]
+    SESSION_SECRET          = module.platform_secrets.secret_arns["SESSION_SECRET"]
+    API_KEY_PEPPER          = module.platform_secrets.secret_arns["API_KEY_PEPPER"]
+    INTERNAL_API_SECRET     = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+    VAULT_API_KEY           = module.platform_secrets.secret_arns["VAULT_API_KEY"]
