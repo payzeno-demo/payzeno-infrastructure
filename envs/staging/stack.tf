@@ -166,3 +166,16 @@ module "rule_console_spa" {
   path_patterns    = ["/*"]
   host_headers     = [local.console_domain]
   action           = "forward"
+  target_group_arn = module.payzeno_api.target_group_arn
+}
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+
+locals {
+  api_env = {
+    NODE_ENV = "staging"
+    PORT     = "8080"
+
+    LEDGER_BASE_URL         = "http://payzeno-ledger.staging.payzeno.internal:8000"
