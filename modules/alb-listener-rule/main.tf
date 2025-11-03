@@ -33,3 +33,15 @@ module "names" {
 
 locals {
   is_forward = var.action == "forward"
+
+  rule_name = "${module.names.id}-${var.name}"
+
+  deny_body = jsonencode({
+    error = {
+      type    = "not_found"
+      message = "Not found"
+    }
+  })
+}
+
+resource "aws_lb_listener_rule" "this" {

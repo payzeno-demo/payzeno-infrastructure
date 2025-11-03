@@ -193,3 +193,17 @@ locals {
     SQS_LEDGER_QUEUE_URL          = module.q_api_ledger.queue_url
     SQS_API_WEBHOOKS_URL          = module.q_api_webhooks.queue_url
     SQS_CONSOLE_NOTIFICATIONS_URL = module.q_console_notifications.queue_url
+    SQS_DLQ_URL                   = module.q_dlq_monitor.queue_url
+
+    AWS_REGION = local.region
+
+    IDEMPOTENCY_BACKEND       = "redis"
+    IDEMPOTENCY_TTL_HOURS     = "24"
+    IDEMPOTENCY_LEASE_SECONDS = "30"
+
+    # staging only — raised from 600 to unblock the checkout load test. Do not copy this to
+    # production; the number there is sized on the acquirer's own limit, not on ours.
+    RATE_LIMIT_DEFAULT_RPM = "6000"
+
+    WEBHOOK_MAX_ATTEMPTS       = "8"
+    WEBHOOK_RETRY_WINDOW_HOURS = "24"
