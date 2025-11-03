@@ -21,3 +21,15 @@ terraform {
     }
   }
 }
+
+module "names" {
+  source = "../naming"
+
+  service     = var.service
+  environment = var.environment
+  component   = "rule"
+  extra_tags  = var.extra_tags
+}
+
+locals {
+  is_forward = var.action == "forward"

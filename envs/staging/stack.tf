@@ -179,3 +179,17 @@ locals {
     PORT     = "8080"
 
     LEDGER_BASE_URL         = "http://payzeno-ledger.staging.payzeno.internal:8000"
+    BILLING_LEGACY_BASE_URL = "http://payzeno-billing-legacy.staging.payzeno.internal:8090"
+    VAULT_BASE_URL          = "http://payzeno-vault.staging.payzeno.internal:8099"
+    VAULT_PUBLIC_URL        = local.vault_public_origin
+    BILLING_LEGACY_USER     = "payzeno_api"
+
+    WORLDFLOW_BASE_URL = local.worldflow_base_url
+    NORDPAY_BASE_URL   = local.nordpay_base_url
+
+    SNS_PAYMENTS_TOPIC_ARN = module.topic_payments_events.topic_arn
+    SNS_MERCHANT_TOPIC_ARN = module.topic_merchant_events.topic_arn
+
+    SQS_LEDGER_QUEUE_URL          = module.q_api_ledger.queue_url
+    SQS_API_WEBHOOKS_URL          = module.q_api_webhooks.queue_url
+    SQS_CONSOLE_NOTIFICATIONS_URL = module.q_console_notifications.queue_url
