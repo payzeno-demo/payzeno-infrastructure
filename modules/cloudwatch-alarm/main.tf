@@ -32,3 +32,10 @@ variable "environment" {
 }
 
 variable "name" {
+  description = "Short alarm name, appended to the naming id. e.g. cpu-high, queue-age."
+  type        = string
+}
+
+variable "namespace" {
+  description = "CloudWatch namespace. AWS/ECS, AWS/RDS, AWS/SQS, or Payzeno/<Service> for custom metrics."
+  type        = string

@@ -98,6 +98,18 @@ resource "aws_ecs_cluster" "payzeno" {
   }
 }
 
+data "aws_iam_policy_document" "rds_monitoring_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["monitoring.rds.amazonaws.com"]
+    }
+  }
+}
+
 resource "aws_iam_role_policy_attachment" "rds_monitoring" {
   role       = aws_iam_role.rds_monitoring.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
@@ -107,6 +119,25 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
 # Shared config bucket. modules/nginx-sidecar writes the rendered nginx config here and the
 # task execution roles read it back at start.
 # ---------------------------------------------------------------------------
+
+resource "aws_s3_bucket_public_access_block" "service_config" {
+  bucket = aws_s3_bucket.service_config.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "service_config" {
+  bucket = aws_s3_bucket.service_config.id
+
+  # An nginx config change takes effect on the next task start, which can be hours later.
+  # Versioning is how you find out what the sidecar was actually running at the time.
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
 
 output "account_id" {
   description = "Account this root deploys into."

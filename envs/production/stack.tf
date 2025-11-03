@@ -77,3 +77,9 @@ locals {
     API_KEY_PEPPER          = module.platform_secrets.secret_arns["API_KEY_PEPPER"]
     INTERNAL_API_SECRET     = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
     VAULT_API_KEY           = module.platform_secrets.secret_arns["VAULT_API_KEY"]
+    WORLDFLOW_API_KEY       = module.platform_secrets.secret_arns["WORLDFLOW_API_KEY"]
+    NORDPAY_API_KEY         = module.platform_secrets.secret_arns["NORDPAY_API_KEY"]
+    BILLING_LEGACY_PASSWORD = module.platform_secrets.secret_arns["BILLING_LEGACY_PASSWORD"]
+    WEBHOOK_SIGNING_KEK     = aws_secretsmanager_secret.webhook_signing_kek.arn
+  }
+
