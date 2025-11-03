@@ -207,3 +207,17 @@ locals {
 
     WEBHOOK_MAX_ATTEMPTS       = "8"
     WEBHOOK_RETRY_WINDOW_HOURS = "24"
+    PROCESSOR_DEFAULT_ACQUIRER = "worldflow"
+    REFUND_WINDOW_DAYS         = "120"
+    CSRF_COOKIE_NAME           = "payzeno_csrf"
+
+    FLAG_LEDGER_OWNS_FEES = "true"
+
+    # Flipped to "true" in month 11 and reverted three days later: the console's invoice list
+    # went empty, because the ledger owns the flag but nginx/payzeno-internal.conf still
+    # routes /internal/v1/invoices/ to payzeno_legacy. The flag and the proxy_pass move
+    # together or not at all. arc MIG step 4 is still not done.
+    FLAG_LEDGER_OWNS_INVOICES = "false"
+
+    FLAG_REDACT_PAN_IN_LOGS = "true"
+
