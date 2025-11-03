@@ -39,3 +39,10 @@ variable "name" {
 variable "namespace" {
   description = "CloudWatch namespace. AWS/ECS, AWS/RDS, AWS/SQS, or Payzeno/<Service> for custom metrics."
   type        = string
+}
+
+variable "metric_name" {
+  description = "CloudWatch metric name."
+  type        = string
+}
+

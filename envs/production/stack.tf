@@ -89,3 +89,9 @@ locals {
   # Shared by module.payzeno_ledger and module.payzeno_ledger_canary — the canary differs by
   # exactly one key, and keeping the base in one local is what makes that visible.
   # -------------------------------------------------------------------------
+  ledger_env = {
+    # 20, and it is not an arbitrary 20. modules/rds-postgres asserts
+    # max_connections >= 3 x this value; see interfaces.md §3.1 rule 4 and the
+    # client_pool_size input on module.db_ledger in data_stores.tf. If you raise this, raise
+    # max_connections in the same PR or the precondition fails the plan — which is the point.
+    DATABASE_POOL_SIZE         = "20"
