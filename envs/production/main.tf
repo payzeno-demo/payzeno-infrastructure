@@ -85,6 +85,25 @@ data "aws_vpc" "payzeno" {
   }
 }
 
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.payzeno.id]
+  }
+
+  filter {
+    name   = "tag:Tier"
+    values = ["private"]
+  }
+}
+
+# Regional certificate, for the ALB.
+data "aws_acm_certificate" "payzeno" {
+  domain      = "*.payzeno.com"
+  statuses    = ["ISSUED"]
+  most_recent = true
+}
+
 resource "aws_ecs_cluster" "payzeno" {
   name = "payzeno-production"
 
@@ -110,6 +129,12 @@ data "aws_iam_policy_document" "rds_monitoring_assume" {
   }
 }
 
+resource "aws_iam_role" "rds_monitoring" {
+  name               = "payzeno-production-rds-monitoring"
+  description        = "Enhanced monitoring for the production Postgres instances"
+  assume_role_policy = data.aws_iam_policy_document.rds_monitoring_assume.json
+}
+
 resource "aws_iam_role_policy_attachment" "rds_monitoring" {
   role       = aws_iam_role.rds_monitoring.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
@@ -119,6 +144,14 @@ resource "aws_iam_role_policy_attachment" "rds_monitoring" {
 # Shared config bucket. modules/nginx-sidecar writes the rendered nginx config here and the
 # task execution roles read it back at start.
 # ---------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "service_config" {
+  bucket = "payzeno-production-service-config-${local.account_id}"
+
+  tags = {
+    Name = "payzeno-production-service-config"
+  }
+}
 
 resource "aws_s3_bucket_public_access_block" "service_config" {
   bucket = aws_s3_bucket.service_config.id

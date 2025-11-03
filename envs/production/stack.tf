@@ -83,3 +83,9 @@ locals {
     WEBHOOK_SIGNING_KEK     = aws_secretsmanager_secret.webhook_signing_kek.arn
   }
 
+  # -------------------------------------------------------------------------
+  # payzeno-ledger
+  #
+  # Shared by module.payzeno_ledger and module.payzeno_ledger_canary — the canary differs by
+  # exactly one key, and keeping the base in one local is what makes that visible.
+  # -------------------------------------------------------------------------
