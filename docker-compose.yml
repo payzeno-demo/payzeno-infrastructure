@@ -52,6 +52,7 @@ services:
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       API_KEY_PEPPER: dev-api-key-pepper
+      AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
       # and these are the same strings envs/*/messaging.tf creates. init-aws.sh in the
       # override file creates them in localstack under account 000000000000.
@@ -77,6 +78,7 @@ services:
 
       WORLDFLOW_BREAKER_RESET_SECONDS: "30"
       NORDPAY_API_KEY: sandbox_np_0000000000000000
+      NORDPAY_BREAKER_WINDOW: "100"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
       # false here and false on module.payzeno_ledger. It is true on exactly one thing in the
@@ -90,6 +92,7 @@ services:
 
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
+      PAYZENO_LEDGER_BASE_URL: http://payzeno-ledger:8000
       PAYZENO_API_BASE_URL: http://payzeno-api:8080
 
       SPRING_PROFILES_ACTIVE: local
