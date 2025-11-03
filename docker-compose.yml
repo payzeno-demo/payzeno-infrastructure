@@ -90,11 +90,16 @@ services:
     depends_on:
       PAYZENO_API_BASE_URL: http://payzeno-api:8080
 
+      SPRING_PROFILES_ACTIVE: local
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
       BILLING_INVOICE_PREFIX: LOCAL
       VITE_PAYZENO_API_URL: http://localhost/v1
+      VITE_ENVIRONMENT: local
       POSTGRES_USER: payzeno
+      POSTGRES_DB: payzeno_api
+    volumes: ["payzeno-postgres-api-data:/var/lib/postgresql/data"]
+    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
       POSTGRES_DB: payzeno_ledger
     volumes: ["payzeno-postgres-ledger-data:/var/lib/postgresql/data"]
