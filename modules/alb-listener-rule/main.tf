@@ -10,3 +10,14 @@
 #
 # The deny body is a 404, not a 403. A 403 on /internal/v1/merchants/mrc_123 tells an
 # unauthenticated caller that mrc_123 exists. Same rule as MerchantScopeGuard in the api.
+
+terraform {
+  required_version = ">= 1.7.0, < 1.8.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.40"
+    }
+  }
+}

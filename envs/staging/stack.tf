@@ -152,3 +152,17 @@ module "rule_api_v1" {
   host_headers     = [local.api_domain]
   action           = "forward"
   target_group_arn = module.payzeno_api.target_group_arn
+}
+
+module "rule_console_spa" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "console-spa"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 500
+
+  path_patterns    = ["/*"]
+  host_headers     = [local.console_domain]
+  action           = "forward"
