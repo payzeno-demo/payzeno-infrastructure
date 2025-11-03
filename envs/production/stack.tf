@@ -77,3 +77,21 @@ locals {
     API_KEY_PEPPER          = module.platform_secrets.secret_arns["API_KEY_PEPPER"]
     INTERNAL_API_SECRET     = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
     VAULT_API_KEY           = module.platform_secrets.secret_arns["VAULT_API_KEY"]
+    WORLDFLOW_API_KEY       = module.platform_secrets.secret_arns["WORLDFLOW_API_KEY"]
+    NORDPAY_API_KEY         = module.platform_secrets.secret_arns["NORDPAY_API_KEY"]
+    BILLING_LEGACY_PASSWORD = module.platform_secrets.secret_arns["BILLING_LEGACY_PASSWORD"]
+    WEBHOOK_SIGNING_KEK     = aws_secretsmanager_secret.webhook_signing_kek.arn
+  }
+
+  # -------------------------------------------------------------------------
+  # payzeno-ledger
+  #
+  # Shared by module.payzeno_ledger and module.payzeno_ledger_canary — the canary differs by
+  # exactly one key, and keeping the base in one local is what makes that visible.
+  # -------------------------------------------------------------------------
+  ledger_env = {
+    # 20, and it is not an arbitrary 20. modules/rds-postgres asserts
+    # max_connections >= 3 x this value; see interfaces.md §3.1 rule 4 and the
+    # client_pool_size input on module.db_ledger in data_stores.tf. If you raise this, raise
+    # max_connections in the same PR or the precondition fails the plan — which is the point.
+    DATABASE_POOL_SIZE         = "20"

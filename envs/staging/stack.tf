@@ -152,3 +152,72 @@ module "rule_api_v1" {
   host_headers     = [local.api_domain]
   action           = "forward"
   target_group_arn = module.payzeno_api.target_group_arn
+}
+
+module "rule_console_spa" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "console-spa"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 500
+
+  path_patterns    = ["/*"]
+  host_headers     = [local.console_domain]
+  action           = "forward"
+  target_group_arn = module.payzeno_api.target_group_arn
+}
+
+# ---------------------------------------------------------------------------
+# Services
+# ---------------------------------------------------------------------------
+
+locals {
+  api_env = {
+    NODE_ENV = "staging"
+    PORT     = "8080"
+
+    LEDGER_BASE_URL         = "http://payzeno-ledger.staging.payzeno.internal:8000"
+    BILLING_LEGACY_BASE_URL = "http://payzeno-billing-legacy.staging.payzeno.internal:8090"
+    VAULT_BASE_URL          = "http://payzeno-vault.staging.payzeno.internal:8099"
+    VAULT_PUBLIC_URL        = local.vault_public_origin
+    BILLING_LEGACY_USER     = "payzeno_api"
+
+    WORLDFLOW_BASE_URL = local.worldflow_base_url
+    NORDPAY_BASE_URL   = local.nordpay_base_url
+
+    SNS_PAYMENTS_TOPIC_ARN = module.topic_payments_events.topic_arn
+    SNS_MERCHANT_TOPIC_ARN = module.topic_merchant_events.topic_arn
+
+    SQS_LEDGER_QUEUE_URL          = module.q_api_ledger.queue_url
+    SQS_API_WEBHOOKS_URL          = module.q_api_webhooks.queue_url
+    SQS_CONSOLE_NOTIFICATIONS_URL = module.q_console_notifications.queue_url
+    SQS_DLQ_URL                   = module.q_dlq_monitor.queue_url
+
+    AWS_REGION = local.region
+
+    IDEMPOTENCY_BACKEND       = "redis"
+    IDEMPOTENCY_TTL_HOURS     = "24"
+    IDEMPOTENCY_LEASE_SECONDS = "30"
+
+    # staging only — raised from 600 to unblock the checkout load test. Do not copy this to
+    # production; the number there is sized on the acquirer's own limit, not on ours.
+    RATE_LIMIT_DEFAULT_RPM = "6000"
+
+    WEBHOOK_MAX_ATTEMPTS       = "8"
+    WEBHOOK_RETRY_WINDOW_HOURS = "24"
+    PROCESSOR_DEFAULT_ACQUIRER = "worldflow"
+    REFUND_WINDOW_DAYS         = "120"
+    CSRF_COOKIE_NAME           = "payzeno_csrf"
+
+    FLAG_LEDGER_OWNS_FEES = "true"
+
+    # Flipped to "true" in month 11 and reverted three days later: the console's invoice list
+    # went empty, because the ledger owns the flag but nginx/payzeno-internal.conf still
+    # routes /internal/v1/invoices/ to payzeno_legacy. The flag and the proxy_pass move
+    # together or not at all. arc MIG step 4 is still not done.
+    FLAG_LEDGER_OWNS_INVOICES = "false"
+
+    FLAG_REDACT_PAN_IN_LOGS = "true"
+

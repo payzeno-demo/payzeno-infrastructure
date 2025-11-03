@@ -10,3 +10,38 @@
 #
 # The deny body is a 404, not a 403. A 403 on /internal/v1/merchants/mrc_123 tells an
 # unauthenticated caller that mrc_123 exists. Same rule as MerchantScopeGuard in the api.
+
+terraform {
+  required_version = ">= 1.7.0, < 1.8.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.40"
+    }
+  }
+}
+
+module "names" {
+  source = "../naming"
+
+  service     = var.service
+  environment = var.environment
+  component   = "rule"
+  extra_tags  = var.extra_tags
+}
+
+locals {
+  is_forward = var.action == "forward"
+
+  rule_name = "${module.names.id}-${var.name}"
+
+  deny_body = jsonencode({
+    error = {
+      type    = "not_found"
+      message = "Not found"
+    }
+  })
+}
+
+resource "aws_lb_listener_rule" "this" {
