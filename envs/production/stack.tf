@@ -95,3 +95,9 @@ locals {
     # client_pool_size input on module.db_ledger in data_stores.tf. If you raise this, raise
     # max_connections in the same PR or the precondition fails the plan — which is the point.
     DATABASE_POOL_SIZE         = "20"
+    DATABASE_POOL_MAX_OVERFLOW = "10"
+
+    SNS_LEDGER_TOPIC_ARN    = module.topic_ledger_events.topic_arn
+    SQS_PAYMENTS_QUEUE_URL  = module.q_ledger_payments.queue_url
+    SQS_MERCHANTS_QUEUE_URL = module.q_ledger_merchants.queue_url
+
