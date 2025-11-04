@@ -42,3 +42,17 @@ locals {
       name  = k
       value = v
     }
+  ]
+
+  # secrets[] — { name, valueFrom }. Two sources: the ARNs a caller handed us (DATABASE_URL
+  # from rds-postgres, REDIS_URL from the cache) and the secrets modules/secrets created for
+  # this service. task_secrets is the projection that module exists to produce.
+  caller_secrets = [
+    for k, arn in var.secrets : {
+      name      = k
+      valueFrom = arn
+    }
+  ]
+
+  module_secrets = length(module.task_secrets) > 0 ? module.task_secrets[0].task_secrets : []
+
