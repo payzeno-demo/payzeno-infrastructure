@@ -101,3 +101,9 @@ locals {
     SQS_PAYMENTS_QUEUE_URL  = module.q_ledger_payments.queue_url
     SQS_MERCHANTS_QUEUE_URL = module.q_ledger_merchants.queue_url
 
+    AWS_REGION = local.region
+
+    WORLDFLOW_BASE_URL              = "https://api.worldflow.com"
+    WORLDFLOW_BREAKER_THRESHOLD_PCT = "50"
+    WORLDFLOW_BREAKER_WINDOW        = "60"
+    WORLDFLOW_BREAKER_RESET_SECONDS = "30"
