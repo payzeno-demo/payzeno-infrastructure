@@ -97,12 +97,38 @@ data "aws_subnets" "private" {
   }
 }
 
+data "aws_subnets" "public" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.payzeno.id]
+  }
+
+  filter {
+    name   = "tag:Tier"
+    values = ["public"]
+  }
+}
+
 # Regional certificate, for the ALB.
 data "aws_acm_certificate" "payzeno" {
   domain      = "*.payzeno.com"
   statuses    = ["ISSUED"]
   most_recent = true
 }
+
+# The same wildcard, issued again in us-east-1 for CloudFront. Two certificates, one name;
+# this trips someone up roughly once a year.
+data "aws_acm_certificate" "payzeno_cloudfront" {
+  provider = aws.us_east_1
+
+  domain      = "*.payzeno.com"
+  statuses    = ["ISSUED"]
+  most_recent = true
+}
+
+# ---------------------------------------------------------------------------
+# Cluster
+# ---------------------------------------------------------------------------
 
 resource "aws_ecs_cluster" "payzeno" {
   name = "payzeno-production"
@@ -170,6 +196,11 @@ resource "aws_s3_bucket_versioning" "service_config" {
   versioning_configuration {
     status = "Enabled"
   }
+}
+
+output "cluster_arn" {
+  description = "ECS cluster ARN. Handy in the runbook — every aws ecs command wants it."
+  value       = aws_ecs_cluster.payzeno.arn
 }
 
 output "account_id" {
