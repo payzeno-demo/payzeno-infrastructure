@@ -46,3 +46,10 @@ variable "metric_name" {
   type        = string
 }
 
+variable "statistic" {
+  description = "Statistic to evaluate. Leave empty when using extended_statistic."
+  type        = string
+  default     = "Average"
+}
+
+variable "extended_statistic" {
