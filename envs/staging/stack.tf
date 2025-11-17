@@ -221,3 +221,17 @@ locals {
 
     FLAG_REDACT_PAN_IN_LOGS = "true"
 
+    LOG_LEVEL                   = "debug"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.staging.payzeno.internal:4318"
+  }
+
+  ledger_env = {
+    DATABASE_POOL_SIZE         = "10"
+    DATABASE_POOL_MAX_OVERFLOW = "5"
+
+    SNS_LEDGER_TOPIC_ARN    = module.topic_ledger_events.topic_arn
+    SQS_PAYMENTS_QUEUE_URL  = module.q_ledger_payments.queue_url
+    SQS_MERCHANTS_QUEUE_URL = module.q_ledger_merchants.queue_url
+
+    AWS_REGION = local.region
+

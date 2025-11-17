@@ -78,6 +78,8 @@ locals {
   acm_arn    = data.aws_acm_certificate.payzeno.arn
 }
 
+data "aws_caller_identity" "current" {}
+
 data "aws_vpc" "payzeno" {
   filter {
     name   = "tag:Name"
@@ -142,6 +144,34 @@ resource "aws_ecs_cluster" "payzeno" {
     Name = "payzeno-production"
   }
 }
+
+resource "aws_ecs_cluster_capacity_providers" "payzeno" {
+  cluster_name = aws_ecs_cluster.payzeno.name
+
+  capacity_providers = ["FARGATE"]
+
+  # No FARGATE_SPOT in production. A reclaimed task in the middle of a settlement batch is
+  # a reconciliation_item stuck in `settling` and a human reading a runbook at 02:00.
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+    base              = 1
+  }
+}
+
+resource "aws_service_discovery_private_dns_namespace" "internal" {
+  name        = "production.payzeno.internal"
+  description = "Service discovery for payzeno-production. The first DNS label equals the docker-compose service name."
+  vpc         = local.vpc_id
+
+  tags = {
+    Name = "production.payzeno.internal"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# RDS enhanced monitoring role. One per account, shared by both Postgres instances.
+# ---------------------------------------------------------------------------
 
 data "aws_iam_policy_document" "rds_monitoring_assume" {
   statement {
