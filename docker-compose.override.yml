@@ -32,3 +32,7 @@ services:
         mode: 0444
 
   payzeno-console:
+    volumes:
+      - payzeno-console-dist:/usr/share/nginx/html
+
+  payzeno-localstack:
