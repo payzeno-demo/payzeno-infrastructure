@@ -125,3 +125,15 @@ locals {
     RETRY_DRAIN_INTERVAL_SECONDS = "60"
     RETRY_DRAIN_BATCH_SIZE       = "200"
 
+    # false on the main service. See module.payzeno_ledger_canary below, which is the one
+    # place it is true, and which is why a 4,113-item backlog drained through a single task.
+    RETRY_DRAIN_ENABLED = "false"
+
+    PAYOUT_CUTOFF_ACH_UTC             = "21:00"
+    PAYOUT_CUTOFF_SAME_DAY_ACH_UTC    = "14:45"
+    PAYOUT_CUTOFF_SEPA_UTC            = "15:00"
+    PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC = "17:30"
+
+    LEDGER_AUDIT_ENABLED        = "true"
+    SETTLEMENT_IMPORT_ENABLED   = "true"
+    FUNDING_MATCH_TOLERANCE_BPS = "5"
