@@ -36,6 +36,23 @@ resource "aws_s3_bucket" "alb_logs" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "expire"
+    status = "Enabled"
+
+    filter {}
+
+    # 90 days, matching the application log retention. Access logs record request paths and
+    # those are PCI scope by association — PAY-1761.
+    expiration {
+      days = 90
+    }
+  }
+}
+
 resource "aws_lb_listener" "http_redirect" {
   load_balancer_arn = aws_lb.public.arn
   port              = 80
@@ -82,6 +99,41 @@ resource "aws_lb_listener" "https" {
 # ---------------------------------------------------------------------------
 # Rules, in evaluation order.
 # ---------------------------------------------------------------------------
+
+# p90 — before /v1/*, because /ws/notifications needs stickiness and the generic forward
+# does not set it. Long-lived connection; see the ALB idle timeout note above.
+module "rule_ws_notifications" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "ws-notifications"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 90
+
+  path_patterns    = ["/ws/notifications"]
+  host_headers     = [local.api_domain]
+  action           = "forward"
+  target_group_arn = module.payzeno_api.target_group_arn
+
+  # One hour, matching nginx's proxy_read_timeout. NotificationRelayConsumer fans out over
+  # this socket, and a reconnect drops whatever was in flight.
+  stickiness_duration = 3600
+}
+
+check "internal_deny_precedes_v1" {
+  assert {
+    condition     = module.rule_api_internal_deny.priority < module.rule_api_v1.priority
+    error_message = "PAYZENO_INFRA_DRIFT: the /internal/* deny (priority ${module.rule_api_internal_deny.priority}) must evaluate BEFORE the /v1/* forward (priority ${module.rule_api_v1.priority}). ALB matches lowest-priority-first and stops. If the deny sits after the forward it never fires, nothing breaks, no metric moves, and /internal/v1/* is publicly reachable through the ALB until somebody reads this file. That is PAY-1811 and it lasted five months."
+  }
+}
+
+check "console_spa_rule_is_last" {
+  assert {
+    condition     = module.rule_console_spa.priority > module.rule_api_v1.priority
+    error_message = "PAYZENO_INFRA_DRIFT: the console catch-all (/*) must be the highest-numbered rule on the listener. Ahead of /v1/* it swallows the entire platform API."
+  }
+}
 
 output "console_bucket" {
   description = "Bucket the console's built bundle syncs into."

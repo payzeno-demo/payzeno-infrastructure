@@ -221,3 +221,31 @@ locals {
 
     FLAG_REDACT_PAN_IN_LOGS = "true"
 
+    LOG_LEVEL                   = "debug"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.staging.payzeno.internal:4318"
+  }
+
+  ledger_env = {
+    DATABASE_POOL_SIZE         = "10"
+    DATABASE_POOL_MAX_OVERFLOW = "5"
+
+    SNS_LEDGER_TOPIC_ARN    = module.topic_ledger_events.topic_arn
+    SQS_PAYMENTS_QUEUE_URL  = module.q_ledger_payments.queue_url
+    SQS_MERCHANTS_QUEUE_URL = module.q_ledger_merchants.queue_url
+
+    AWS_REGION = local.region
+
+    WORLDFLOW_BASE_URL              = local.worldflow_base_url
+    WORLDFLOW_BREAKER_THRESHOLD_PCT = "50"
+    WORLDFLOW_BREAKER_WINDOW        = "60"
+    WORLDFLOW_BREAKER_RESET_SECONDS = "30"
+
+    NORDPAY_BASE_URL              = local.nordpay_base_url
+    NORDPAY_BREAKER_THRESHOLD_PCT = "50"
+    NORDPAY_BREAKER_WINDOW        = "60"
+    NORDPAY_BREAKER_RESET_SECONDS = "30"
+
+    # 300 rather than production's 900, so a settlement change is testable inside a working
+    # session instead of a coffee break. It also means staging never reproduces the
+    # sweep/drain overlap window that PAY-2041 turned on, which is worth knowing before you
+    # conclude something is safe because staging was fine.

@@ -113,3 +113,15 @@ locals {
     NORDPAY_BREAKER_WINDOW        = "60"
     NORDPAY_BREAKER_RESET_SECONDS = "30"
 
+    # 900s. The sweep and the 60s retry drain both process RETRYABLE_STATUSES, which is the
+    # overlap PAY-2041 was about. Do not shorten either interval without reading
+    # payzeno-ledger/docs/adr/0011-lock-ordering-in-the-money-path.md.
+    RECONCILE_SWEEP_INTERVAL_SECONDS     = "900"
+    RECONCILE_SWEEP_WALL_BUDGET_SECONDS  = "600"
+    RECONCILE_MAX_ITEMS_PER_RUN          = "2000"
+    RECONCILE_MAX_ATTEMPTS               = "6"
+    RECONCILE_RETRY_BACKOFF_BASE_SECONDS = "15"
+
+    RETRY_DRAIN_INTERVAL_SECONDS = "60"
+    RETRY_DRAIN_BATCH_SIZE       = "200"
+
