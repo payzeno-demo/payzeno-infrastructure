@@ -235,3 +235,17 @@ locals {
 
     AWS_REGION = local.region
 
+    WORLDFLOW_BASE_URL              = local.worldflow_base_url
+    WORLDFLOW_BREAKER_THRESHOLD_PCT = "50"
+    WORLDFLOW_BREAKER_WINDOW        = "60"
+    WORLDFLOW_BREAKER_RESET_SECONDS = "30"
+
+    NORDPAY_BASE_URL              = local.nordpay_base_url
+    NORDPAY_BREAKER_THRESHOLD_PCT = "50"
+    NORDPAY_BREAKER_WINDOW        = "60"
+    NORDPAY_BREAKER_RESET_SECONDS = "30"
+
+    # 300 rather than production's 900, so a settlement change is testable inside a working
+    # session instead of a coffee break. It also means staging never reproduces the
+    # sweep/drain overlap window that PAY-2041 turned on, which is worth knowing before you
+    # conclude something is safe because staging was fine.
