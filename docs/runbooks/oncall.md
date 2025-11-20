@@ -1,0 +1,107 @@
+# On-call runbook
+
+You are on the pager. It is 02:00. Read the section for the alarm that woke you and do what
+it says. Do not start by reading code.
+
+Every alarm carries a `Runbook` tag and its `alarm_description` ends with a link to a section
+in this file. If you got paged by an alarm with no section here, that is a bug — file it in
+the morning, and in the meantime page `@apager`.
+
+**Three rules.**
+
+1. **Stop the bleeding before you understand it.** Scaling something down, turning a flag
+   off and disabling a schedule are all reversible. A wrong diagnosis at 02:00 is not.
+2. **Say what you did, in `#incidents`, as you do it.** One line per action, with the
+   timestamp. The postmortem is written from that thread and if it is not there it did not
+   happen.
+3. **Money problems are Sev1 by default.** If a merchant or a cardholder could have been
+   charged twice, wake `@dhotfix`. Do not wait until you are sure.
+
+Assume the role before anything else:
+
+```bash
+aws sso login --profile payzeno-production
+export AWS_PROFILE=payzeno-production
+export CLUSTER=payzeno-production
+```
+
+---
+
+## duplicate-settlement
+
+**Alarm:** `payzeno-ledger-production-duplicate-settlement` — Sev1.
+**Also fires:** `payzeno-ledger-production-batch-overposted`, and the composite
+`payzeno-ledger-production-settlement-integrity`.
+
+The ledger has posted a second `purpose='settle'` transaction for a charge it had already
+settled. **A duplicate settlement is internally balanced**, so the ledger's own imbalance
+checks will not catch it and nothing else will tell you. If the merchant has
+`capture_at_settlement = true`, the cardholder has been charged twice, for real, and the
+clock on that is a chargeback.
+
+Do this, in order.
+
+**1. Stop the drain.** Scale the retry-drain canary to zero. It is the only task in
+production with `RETRY_DRAIN_ENABLED=true`.
+
+```bash
+aws ecs update-service --cluster $CLUSTER \
+  --service payzeno-ledger-production-canary --desired-count 0
+```
+
+**2. Scale the ledger to one task.** See [scale the ledger to one task](#scale-the-ledger-to-one-task)
+below. One task cannot overlap itself.
+
+**3. Count the damage.** The duplicate-finding query is in
+`payzeno-ledger/docs/runbooks/reconciliation.md`, section "duplicate settlement detected".
+Run it against the ledger read replica, not the writer.
+
+```bash
+aws rds describe-db-instances \
+  --db-instance-identifier payzeno-ledger-production \
+  --query 'DBInstances[0].Endpoint.Address'
+```
+
+**4. If any duplicate charge belongs to a `capture_at_settlement` merchant, wake `@dhotfix`
+and open a Sev1.** That is a cardholder double-charge and it needs a refund run, not a
+ledger correction. Cardholder remediation is a payzeno-api job — see PAY-2042 for the shape
+of the last one.
+
+**5. Only then** work out why. Start with `payzeno-ledger/docs/adr/0011-lock-ordering-in-the-money-path.md`.
+
+**Known weakness of this alarm.** It is gated on `FLAG_DUPLICATE_SETTLEMENT_ALARM` in the
+ledger's config (`envs/production/services.tf`, `local.ledger_env`). If that flag is turned
+off, the metric stops being emitted and this alarm goes *quiet*, not red. Nothing here can
+tell the difference between "no duplicates" and "no metric". If you are investigating a
+suspected duplicate and this alarm never fired, check the flag before you conclude anything.
+
+---
+
+## reconciliation-lag
+
+**Alarm:** `payzeno-ledger-production-reconciliation-lag` — Sev2.
+
+The oldest item in a retryable status is over two hours old. The sweep is behind.
+
+This is not itself an incident. It is the state that *precedes* one: a large retryable
+backlog is what makes a sweep and a drain end up on the same item.
+
+1. Check the acquirers first. Nine times out of ten the sweep is behind because Worldflow is
+   returning 5xx and the breaker is open.
+
+   ```bash
+   aws logs tail /payzeno/production/payzeno-ledger --since 30m \
+     --filter-pattern '"breaker"' --follow
+   ```
+
+2. Check the database is not the constraint —
+   [database-connections-high](#database-connections-high).
+3. If both are clean, look at `RECONCILE_MAX_ITEMS_PER_RUN` (2000) against the actual backlog.
+   The sweep has a wall budget of 600s and will stop mid-backlog rather than run long.
+
+Do **not** raise `RETRY_DRAIN_BATCH_SIZE` or widen `RETRY_DRAIN_ENABLED` to make this go
+faster. That is what the drain is for and it is the thing that is not safe to run everywhere
+until PAY-2059 lands the backoff and the breaker.
+
+---
+

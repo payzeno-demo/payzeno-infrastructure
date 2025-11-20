@@ -50,6 +50,22 @@ person to deploy will put the broken tag back.
 
 ---
 
+### Reading a plan
+
+Things worth stopping for, none of which terraform highlights:
+
+- **`must be replaced`** on anything with data in it. An `aws_db_instance` replacement is a
+  new empty database. An `aws_sqs_queue` replacement drops whatever is in the queue.
+- **A target group replacement.** The service will be deregistered and re-registered; on a
+  small `desired_count` that is a gap.
+- **`known after apply` on a secret ARN.** Means the secret is being recreated, which means
+  the value is being replaced with a random placeholder and a human has to set the real one
+  again. Check `modules/secrets` before you approve that.
+- **Nothing but tag churn.** Usually a provider version difference. It is safe and it is also
+  400 lines nobody reads, which is how a real change hides in one. Split it out.
+
+---
+
 ## Database changes
 
 Migrations belong to the service that owns the schema (alembic in payzeno-ledger, TypeORM in
@@ -66,3 +82,13 @@ waited six days while everyone assumed it had applied. `module.db_ledger` sets
 
 ---
 
+## Never
+
+- `terraform destroy`. Not in staging either. PAY-1522 is the near-miss that added
+  `deletion_protection` to the billing MySQL, and that module still has
+  `skip_final_snapshot = true`.
+- `-auto-approve` against `envs/production/`.
+- `-target`. If you need it, the dependency graph is wrong and the fix is in the code.
+- Editing state by hand without a second person watching.
+- Changing anything in the ECS or RDS console and leaving it there. Terraform will revert it
+  on the next apply, at a moment nobody has chosen — probably during someone else's change.
