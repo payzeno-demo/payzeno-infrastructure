@@ -249,3 +249,17 @@ locals {
     # session instead of a coffee break. It also means staging never reproduces the
     # sweep/drain overlap window that PAY-2041 turned on, which is worth knowing before you
     # conclude something is safe because staging was fine.
+    RECONCILE_SWEEP_INTERVAL_SECONDS     = "300"
+    RECONCILE_SWEEP_WALL_BUDGET_SECONDS  = "240"
+    RECONCILE_MAX_ITEMS_PER_RUN          = "500"
+    RECONCILE_MAX_ATTEMPTS               = "6"
+    RECONCILE_RETRY_BACKOFF_BASE_SECONDS = "15"
+
+    RETRY_DRAIN_INTERVAL_SECONDS = "60"
+    RETRY_DRAIN_BATCH_SIZE       = "100"
+
+    # true on the single staging task. There is no canary here — staging runs one ledger
+    # task, so the drain is either on or off and it is on. Production runs it on exactly one
+    # of five tasks, which is a configuration staging cannot express and therefore cannot
+    # test.
+    RETRY_DRAIN_ENABLED = "true"

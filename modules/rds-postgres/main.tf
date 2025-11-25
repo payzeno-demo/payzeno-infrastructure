@@ -17,3 +17,22 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
+      version = ">= 5.40"
+    }
+  }
+}
+
+module "names" {
+  source = "../naming"
+
+  service     = var.service
+  environment = var.environment
+  component   = "db"
+  extra_tags  = var.extra_tags
+}
+
+module "credentials" {
+  source = "../secrets"
+
+  service      = var.service
+  environment  = var.environment
