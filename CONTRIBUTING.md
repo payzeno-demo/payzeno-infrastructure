@@ -22,6 +22,16 @@ applies. If you need something applied, say so on the PR and infra will do it.
 
 ---
 
+### `PAYZENO_INFRA_PRECONDITION` — `lifecycle { precondition { ... } }`
+
+Invariants that depend on resolved values, not just inputs — a relationship between two
+things rather than a property of one. Examples:
+
+- `ecs-service`: a `secrets[]` entry exists for every key named in `var.secrets`
+- `rds-postgres`: `multi_az` is true when `environment == "production"`
+- `secrets`: KMS key rotation is enabled in production
+- `sqs-queue`: a DLQ exists for every queue with a redrive policy
+
 ## 6. Things that need a conversation first
 
 Open a ticket and talk to infra before you write the PR:

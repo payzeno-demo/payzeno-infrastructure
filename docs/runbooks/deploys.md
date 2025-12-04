@@ -66,6 +66,27 @@ Things worth stopping for, none of which terraform highlights:
 
 ---
 
+## Deploying the console
+
+```bash
+aws s3 sync dist/ "s3://$(terraform -chdir=envs/production output -raw console_bucket)/" \
+  --delete --cache-control "public,max-age=31536000,immutable" --exclude index.html
+
+aws s3 cp dist/index.html \
+  "s3://$(terraform -chdir=envs/production output -raw console_bucket)/index.html" \
+  --cache-control "no-cache"
+
+aws cloudfront create-invalidation \
+  --distribution-id "$(terraform -chdir=envs/production output -raw console_distribution_id)" \
+  --paths /index.html
+```
+
+Assets are hashed and immutable; `index.html` is not and must never be cached. Invalidate
+`/index.html` only — invalidating `/*` costs money and achieves nothing extra, because the
+hashed asset paths change on every build.
+
+---
+
 ## Database changes
 
 Migrations belong to the service that owns the schema (alembic in payzeno-ledger, TypeORM in
