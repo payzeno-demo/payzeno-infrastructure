@@ -263,3 +263,17 @@ locals {
     # of five tasks, which is a configuration staging cannot express and therefore cannot
     # test.
     RETRY_DRAIN_ENABLED = "true"
+
+    PAYOUT_CUTOFF_ACH_UTC             = "21:00"
+    PAYOUT_CUTOFF_SAME_DAY_ACH_UTC    = "14:45"
+    PAYOUT_CUTOFF_SEPA_UTC            = "15:00"
+    PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC = "17:30"
+
+    LEDGER_AUDIT_ENABLED        = "true"
+    SETTLEMENT_IMPORT_ENABLED   = "true"
+    FUNDING_MATCH_TOLERANCE_BPS = "5"
+
+    FLAG_DUPLICATE_SETTLEMENT_ALARM = "true"
+    FLAG_PAYOUT_SAME_DAY_ACH        = "true"
+    FLAG_REDACT_PAN_IN_LOGS         = "true"
+
