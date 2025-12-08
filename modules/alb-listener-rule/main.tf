@@ -56,3 +56,15 @@ resource "aws_lb_listener_rule" "this" {
 
       forward {
         target_group {
+          arn = var.target_group_arn
+        }
+
+        dynamic "stickiness" {
+          for_each = var.stickiness_duration > 0 ? [1] : []
+
+          content {
+            enabled  = true
+            duration = var.stickiness_duration
+          }
+        }
+      }
