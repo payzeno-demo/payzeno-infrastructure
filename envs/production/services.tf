@@ -137,3 +137,9 @@ locals {
     LEDGER_AUDIT_ENABLED        = "true"
     SETTLEMENT_IMPORT_ENABLED   = "true"
     FUNDING_MATCH_TOLERANCE_BPS = "5"
+
+    FLAG_DUPLICATE_SETTLEMENT_ALARM = "true"
+    FLAG_PAYOUT_SAME_DAY_ACH        = "false"
+    FLAG_REDACT_PAN_IN_LOGS         = "true"
+
+    LOG_LEVEL                   = "info"

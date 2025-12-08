@@ -80,6 +80,7 @@ services:
 
       WORLDFLOW_BREAKER_RESET_SECONDS: "30"
       NORDPAY_API_KEY: sandbox_np_0000000000000000
+      NORDPAY_BREAKER_THRESHOLD_PCT: "50"
       NORDPAY_BREAKER_WINDOW: "100"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
@@ -109,6 +110,8 @@ services:
     volumes: ["payzeno-postgres-api-data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
+      POSTGRES_USER: payzeno
+      POSTGRES_PASSWORD: payzeno
       POSTGRES_DB: payzeno_ledger
     volumes: ["payzeno-postgres-ledger-data:/var/lib/postgresql/data"]
     # Two Postgres instances, not two databases in one instance. data-model.md §5 gives the
