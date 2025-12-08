@@ -36,6 +36,9 @@ services:
       - payzeno-console-dist:/usr/share/nginx/html
 
   payzeno-localstack:
+    ports:
+      - "8090:8090"
+      - "5005:5005"       # JDWP
     content: |
       worker_processes auto;
       error_log /var/log/nginx/error.log notice;
