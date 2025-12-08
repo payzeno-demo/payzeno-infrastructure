@@ -45,3 +45,14 @@ locals {
 }
 
 resource "aws_lb_listener_rule" "this" {
+  listener_arn = var.listener_arn
+  priority     = var.priority
+
+  dynamic "action" {
+    for_each = local.is_forward ? [1] : []
+
+    content {
+      type = "forward"
+
+      forward {
+        target_group {
