@@ -68,3 +68,15 @@ resource "aws_lb_listener_rule" "this" {
           }
         }
       }
+    }
+  }
+
+  dynamic "action" {
+    for_each = local.is_forward ? [] : [1]
+
+    content {
+      type = "fixed-response"
+
+      fixed_response {
+        content_type = "application/json"
+        message_body = local.deny_body
