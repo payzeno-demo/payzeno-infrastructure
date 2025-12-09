@@ -80,3 +80,14 @@ resource "aws_lb_listener_rule" "this" {
       fixed_response {
         content_type = "application/json"
         message_body = local.deny_body
+        status_code  = "404"
+      }
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = var.path_patterns
+    }
+  }
+
