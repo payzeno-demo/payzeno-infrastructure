@@ -91,3 +91,15 @@ resource "aws_lb_listener_rule" "this" {
     }
   }
 
+  dynamic "condition" {
+    for_each = length(var.host_headers) > 0 ? [1] : []
+
+    content {
+      host_header {
+        values = var.host_headers
+      }
+    }
+  }
+
+  tags = merge(module.names.tags, {
+    Name     = local.rule_name
