@@ -28,6 +28,22 @@ resource "aws_security_group" "alb" {
   }
 }
 
+resource "aws_vpc_security_group_ingress_rule" "alb_http" {
+  security_group_id = aws_security_group.alb.id
+  description       = "HTTP from the internet, redirected to HTTPS by the listener"
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb_to_tasks" {
+  security_group_id = aws_security_group.alb.id
+  description       = "ALB to task ENIs"
+  cidr_ipv4         = "10.0.0.0/8"
+  ip_protocol       = "-1"
+}
+
 resource "aws_s3_bucket" "alb_logs" {
   bucket = "payzeno-production-alb-logs-${local.account_id}"
 
@@ -120,6 +136,42 @@ module "rule_ws_notifications" {
   # this socket, and a reconnect drops whatever was in flight.
   stickiness_duration = 3600
 }
+
+module "payzeno_console" {
+  source = "../../modules/static-site"
+
+  service     = "payzeno-console"
+  environment = local.environment
+
+  domain_name         = local.console_domain
+  acm_certificate_arn = data.aws_acm_certificate.payzeno_cloudfront.arn
+  spa_fallback        = true
+
+  api_origin          = local.api_origin
+  vault_public_origin = local.vault_public_origin
+
+  price_class = "PriceClass_100"
+}
+
+resource "aws_ssm_parameter" "console_build_args" {
+  for_each = local.console_build_args
+
+  name  = "/payzeno/production/payzeno-console/${each.key}"
+  type  = "String"
+  value = each.value
+
+  description = "Build-time configuration for payzeno-console. Read by the console's CI, baked into the bundle by Vite. Takes effect on the next build, not on apply."
+
+  tags = {
+    Name    = each.key
+    Service = "payzeno-console"
+    Rebuild = "required"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Drift check. PAYZENO_INFRA_DRIFT. Added month 7 with the priority fix — PAY-1811.
+# ---------------------------------------------------------------------------
 
 check "internal_deny_precedes_v1" {
   assert {

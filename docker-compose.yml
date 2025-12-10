@@ -72,12 +72,28 @@ services:
       FLAG_LEDGER_OWNS_FEES: "true"
       LOG_LEVEL: debug
       payzeno-redis:        { condition: service_healthy }
+      payzeno-vault:        { condition: service_started }
+    healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"] }
+
+  # -------------------------------------------------------------------------
+  # payzeno-ledger — money. FastAPI. interfaces.md §7's ledger list, in full.
+  #
+  # FLAG_RECONCILE_RETRY_BATCH_LOCK is deliberately absent: PAY-2043 added it on the night of
+  # the incident and PAY-2056 removed it a week later. app/flags.py documents that it was
+  # three flags, not four, at HEAD. Do not re-add it here to "match the contract" — §7's note
+  # says it exists only between those two tickets.
+  # -------------------------------------------------------------------------
+  payzeno-ledger:
+    build: { context: ../payzeno-ledger }
+    ports: ["8000:8000"]
+    environment:
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
       # 20 above is not arbitrary: reconcile_batch holds three sessions in one pass and the
       # retry drain takes a fourth. modules/rds-postgres asserts max_connections >= 3x this.
       DATABASE_POOL_MAX_OVERFLOW: "10"
       SQS_MERCHANTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-merchants
 
+      WORLDFLOW_API_KEY: sandbox_wf_0000000000000000
       WORLDFLOW_BREAKER_RESET_SECONDS: "30"
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       NORDPAY_BREAKER_THRESHOLD_PCT: "50"
@@ -132,6 +148,7 @@ services:
     ports: ["6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
       DEBUG: "0"
       timeout: 5s
       retries: 20
