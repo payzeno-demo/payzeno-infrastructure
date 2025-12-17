@@ -143,3 +143,9 @@ locals {
     FLAG_REDACT_PAN_IN_LOGS         = "true"
 
     LOG_LEVEL                   = "info"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.production.payzeno.internal:4318"
+  }
+
+  ledger_secrets = {
+    DATABASE_URL        = module.db_ledger.database_url_secret_arn
+    INTERNAL_API_SECRET = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
