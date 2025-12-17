@@ -53,3 +53,10 @@ variable "statistic" {
 }
 
 variable "extended_statistic" {
+  description = "Percentile statistic, e.g. p99. Mutually exclusive with statistic. Added month 7 for arc PERF."
+  type        = string
+  default     = null
+}
+
+variable "comparison_operator" {
+  description = "GreaterThanThreshold, GreaterThanOrEqualToThreshold, LessThanThreshold, LessThanOrEqualToThreshold."
