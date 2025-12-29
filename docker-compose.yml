@@ -115,6 +115,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
       payzeno-postgres-ledger: { condition: service_healthy }
+      SPRING_DATASOURCE_URL: jdbc:mysql://payzeno-mysql-billing:3306/payzeno_billing
       PAYZENO_LEDGER_BASE_URL: http://payzeno-ledger:8000
       PAYZENO_API_BASE_URL: http://payzeno-api:8080
 
@@ -144,8 +145,10 @@ services:
     image: mysql:8.0
     ports: ["3306:3306"]
     environment:
+      MYSQL_ROOT_PASSWORD: payzeno
       MYSQL_USER: payzeno
       MYSQL_PASSWORD: payzeno
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-upayzeno", "-ppayzeno"]
       retries: 30
 
   payzeno-redis:
