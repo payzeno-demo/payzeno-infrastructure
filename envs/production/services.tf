@@ -161,3 +161,9 @@ locals {
 module "payzeno_api" {
   source = "../../modules/ecs-service"
 
+  service        = "payzeno-api"
+  environment    = local.environment
+  image          = local.images.api
+  container_port = 8080
+  desired_count  = 4
+
