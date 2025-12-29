@@ -115,3 +115,14 @@ resource "aws_lb_listener_rule" "this" {
 
     precondition {
       condition     = local.is_forward || var.target_group_arn == null
+      error_message = "PAYZENO_INFRA_PRECONDITION: a deny rule must not carry a target_group_arn. If rule '${var.name}' is meant to forward, say so."
+    }
+
+    precondition {
+      condition     = local.is_forward || var.priority < 100
+      error_message = "PAYZENO_INFRA_PRECONDITION: deny rules live below priority 100 so they evaluate before any forward. Rule '${var.name}' is a deny at priority ${var.priority}, which is the exact shape of PAY-1811 — a deny that never fired for five months."
+    }
+  }
+}
+
+# Outputs stayed in main.tf when variables.tf was split out. See CONTRIBUTING.md §4 for

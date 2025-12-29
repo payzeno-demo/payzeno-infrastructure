@@ -15,6 +15,11 @@ variable "name" {
   type        = string
 }
 
+variable "listener_arn" {
+  description = "ARN of the HTTPS listener this rule attaches to."
+  type        = string
+}
+
 variable "path_patterns" {
   description = "Path patterns matched by this rule. ALB globs, not regexes: /internal/* not ^/internal/."
   type        = list(string)
@@ -30,6 +35,12 @@ variable "path_patterns" {
     ])
     error_message = "PAYZENO_INFRA_INVALID_INPUT: path patterns are absolute and start with /."
   }
+}
+
+variable "host_headers" {
+  description = "Optional host-header condition. Empty means the rule matches on path alone."
+  type        = list(string)
+  default     = []
 }
 
 variable "stickiness_duration" {

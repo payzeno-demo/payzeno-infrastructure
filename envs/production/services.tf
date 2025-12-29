@@ -167,3 +167,9 @@ module "payzeno_api" {
   container_port = 8080
   desired_count  = 4
 
+  cpu    = 2048
+  memory = 4096
+
+  environment_vars = local.api_env
+  secrets          = local.api_secrets
+
