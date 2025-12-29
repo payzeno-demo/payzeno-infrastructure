@@ -149,3 +149,9 @@ locals {
   ledger_secrets = {
     DATABASE_URL        = module.db_ledger.database_url_secret_arn
     INTERNAL_API_SECRET = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+    WORLDFLOW_API_KEY   = module.platform_secrets.secret_arns["WORLDFLOW_API_KEY"]
+    NORDPAY_API_KEY     = module.platform_secrets.secret_arns["NORDPAY_API_KEY"]
+  }
+}
+
+# ---------------------------------------------------------------------------
