@@ -50,6 +50,7 @@ services:
       PORT: "8080"
       REDIS_URL: redis://payzeno-redis:6379/0
       LEDGER_BASE_URL: http://payzeno-ledger:8000
+      BILLING_LEGACY_BASE_URL: http://payzeno-billing-legacy:8090
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       BILLING_LEGACY_PASSWORD: dev-legacy-password
@@ -104,6 +105,7 @@ services:
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       NORDPAY_BREAKER_THRESHOLD_PCT: "50"
       NORDPAY_BREAKER_WINDOW: "100"
+      RECONCILE_SWEEP_INTERVAL_SECONDS: "900"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
       # false here and false on module.payzeno_ledger. It is true on exactly one thing in the
@@ -119,6 +121,16 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
       payzeno-postgres-ledger: { condition: service_healthy }
+      payzeno-localstack:      { condition: service_healthy }
+    healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"] }
+
+  # -------------------------------------------------------------------------
+  # payzeno-billing-legacy — Spring Boot 2.7, MySQL 8, 2016. interfaces.md §7's legacy list.
+  # -------------------------------------------------------------------------
+  payzeno-billing-legacy:
+    build: { context: ../payzeno-billing-legacy }
+    ports: ["8090:8090"]
+    environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://payzeno-mysql-billing:3306/payzeno_billing
       PAYZENO_LEDGER_BASE_URL: http://payzeno-ledger:8000
       PAYZENO_API_BASE_URL: http://payzeno-api:8080

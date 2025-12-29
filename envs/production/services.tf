@@ -173,3 +173,9 @@ module "payzeno_api" {
   environment_vars = local.api_env
   secrets          = local.api_secrets
 
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  cluster_arn           = aws_ecs_cluster.payzeno.arn
+  alb_listener_arn      = aws_lb_listener.https.arn
+  alb_security_group_id = aws_security_group.alb.id
+
