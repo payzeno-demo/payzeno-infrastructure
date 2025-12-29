@@ -114,6 +114,7 @@ services:
 
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
+      payzeno-postgres-ledger: { condition: service_healthy }
       PAYZENO_LEDGER_BASE_URL: http://payzeno-ledger:8000
       PAYZENO_API_BASE_URL: http://payzeno-api:8080
 
@@ -121,6 +122,7 @@ services:
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
       BILLING_INVOICE_PREFIX: LOCAL
+      BILLING_DUNNING_ENABLED: "false"
       VITE_PAYZENO_API_URL: http://localhost/v1
       VITE_ENVIRONMENT: local
       POSTGRES_USER: payzeno
@@ -152,6 +154,12 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
+      retries: 20
+
+  payzeno-localstack:
+    image: localstack/localstack:3
+    ports: ["4566:4566"]
+    environment:
       # Quoted, and it matters: interfaces.md §6.2 writes this as a YAML flow mapping
       # (`{ SERVICES: sns,sqs,s3,kms,secretsmanager }`) where the commas separate MAP ENTRIES,
       # not list items — so `sqs`, `s3`, `kms` and `secretsmanager` parse as four keys with
