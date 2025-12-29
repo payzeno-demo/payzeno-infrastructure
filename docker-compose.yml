@@ -47,10 +47,12 @@ services:
     ports: ["8080:8080"]
     environment:                       # keys drawn verbatim from §7
       NODE_ENV: development
+      PORT: "8080"
       REDIS_URL: redis://payzeno-redis:6379/0
       LEDGER_BASE_URL: http://payzeno-ledger:8000
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
+      BILLING_LEGACY_PASSWORD: dev-legacy-password
       API_KEY_PEPPER: dev-api-key-pepper
       AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
@@ -90,6 +92,8 @@ services:
     ports: ["8000:8000"]
     environment:
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
+      NORDPAY_BASE_URL: http://payzeno-acquirer-sandbox:9101
+
       # 20 above is not arbitrary: reconcile_batch holds three sessions in one pass and the
       # retry drain takes a fourth. modules/rds-postgres asserts max_connections >= 3x this.
       DATABASE_POOL_MAX_OVERFLOW: "10"
