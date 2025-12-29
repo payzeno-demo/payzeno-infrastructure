@@ -25,6 +25,8 @@ terraform {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 data "aws_region" "current" {}
 
 output "config_bucket_arn" {
@@ -32,3 +34,7 @@ output "config_bucket_arn" {
   value       = "arn:aws:s3:::${local.config_bucket}"
 }
 
+output "rendered_config" {
+  description = "The rendered nginx config. Exposed so `terraform console` can show it without a round trip to S3 — nginx -t in CI runs against nginx/ in the repo, not against this."
+  value       = local.rendered_config
+}

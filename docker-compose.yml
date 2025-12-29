@@ -71,6 +71,8 @@ services:
       FLAG_LEDGER_OWNS_INVOICES: "false"
       FLAG_LEDGER_OWNS_FEES: "true"
       LOG_LEVEL: debug
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4318
+    depends_on:
       payzeno-redis:        { condition: service_healthy }
       payzeno-vault:        { condition: service_started }
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"] }
@@ -141,6 +143,7 @@ services:
     ports: ["3306:3306"]
     environment:
       MYSQL_USER: payzeno
+      MYSQL_PASSWORD: payzeno
       retries: 30
 
   payzeno-redis:
@@ -149,6 +152,12 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
+      # Quoted, and it matters: interfaces.md §6.2 writes this as a YAML flow mapping
+      # (`{ SERVICES: sns,sqs,s3,kms,secretsmanager }`) where the commas separate MAP ENTRIES,
+      # not list items — so `sqs`, `s3`, `kms` and `secretsmanager` parse as four keys with
+      # null values and localstack comes up with SNS only. Everything else then fails at
+      # runtime with a connection error nobody attributes to a comma.
+      SERVICES: "sns,sqs,s3,kms,secretsmanager"
       DEBUG: "0"
       timeout: 5s
       retries: 20
