@@ -28,6 +28,15 @@ resource "aws_security_group" "alb" {
   }
 }
 
+resource "aws_vpc_security_group_ingress_rule" "alb_https" {
+  security_group_id = aws_security_group.alb.id
+  description       = "HTTPS from the internet"
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   security_group_id = aws_security_group.alb.id
   description       = "HTTP from the internet, redirected to HTTPS by the listener"
@@ -43,6 +52,33 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_tasks" {
   cidr_ipv4         = "10.0.0.0/8"
   ip_protocol       = "-1"
 }
+
+resource "aws_lb" "public" {
+  name               = "payzeno-production"
+  load_balancer_type = "application"
+  internal           = false
+  subnets            = data.aws_subnets.public.ids
+  security_groups    = [aws_security_group.alb.id]
+
+  idle_timeout               = 3660
+  enable_deletion_protection = true
+  drop_invalid_header_fields = true
+
+  access_logs {
+    bucket  = aws_s3_bucket.alb_logs.id
+    prefix  = "payzeno-production"
+    enabled = true
+  }
+
+  tags = {
+    Name = "payzeno-production"
+  }
+}
+
+# The WebSocket route holds a connection open for an hour (see module.rule_ws_notifications
+# and nginx/payzeno-api.conf's proxy_read_timeout 3600s). The ALB idle timeout above is
+# 3660 rather than the default 60 for exactly that, and lowering it silently kills every
+# console notification stream after a minute.
 
 resource "aws_s3_bucket" "alb_logs" {
   bucket = "payzeno-production-alb-logs-${local.account_id}"
@@ -137,6 +173,22 @@ module "rule_ws_notifications" {
   stickiness_duration = 3600
 }
 
+# p100 — the platform API.
+module "rule_api_v1" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "v1"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 100
+
+  path_patterns    = ["/v1/*", "/healthz"]
+  host_headers     = [local.api_domain]
+  action           = "forward"
+  target_group_arn = module.payzeno_api.target_group_arn
+}
+
 module "payzeno_console" {
   source = "../../modules/static-site"
 
@@ -185,6 +237,11 @@ check "console_spa_rule_is_last" {
     condition     = module.rule_console_spa.priority > module.rule_api_v1.priority
     error_message = "PAYZENO_INFRA_DRIFT: the console catch-all (/*) must be the highest-numbered rule on the listener. Ahead of /v1/* it swallows the entire platform API."
   }
+}
+
+output "console_distribution_id" {
+  description = "CloudFront distribution id. The console's deploy job invalidates against it."
+  value       = module.payzeno_console.distribution_id
 }
 
 output "console_bucket" {

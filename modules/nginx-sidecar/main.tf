@@ -25,10 +25,30 @@ terraform {
   }
 }
 
+module "names" {
+  source = "../naming"
+
+  service     = var.service
+  environment = var.environment
+  component   = "sidecar"
+  extra_tags  = var.extra_tags
+}
+
+data "aws_caller_identity" "current" {}
+
 data "aws_region" "current" {}
+
+output "container_definition" {
+  description = "The nginx container definition object, concatenated into the task definition by modules/ecs-service."
+  value       = local.container_definition
+}
 
 output "config_bucket_arn" {
   description = "ARN of the shared service-config bucket. The execution role needs s3:GetObject under this module's prefix."
   value       = "arn:aws:s3:::${local.config_bucket}"
 }
 
+output "rendered_config" {
+  description = "The rendered nginx config. Exposed so `terraform console` can show it without a round trip to S3 — nginx -t in CI runs against nginx/ in the repo, not against this."
+  value       = local.rendered_config
+}

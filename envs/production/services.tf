@@ -149,3 +149,33 @@ locals {
   ledger_secrets = {
     DATABASE_URL        = module.db_ledger.database_url_secret_arn
     INTERNAL_API_SECRET = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+    WORLDFLOW_API_KEY   = module.platform_secrets.secret_arns["WORLDFLOW_API_KEY"]
+    NORDPAY_API_KEY     = module.platform_secrets.secret_arns["NORDPAY_API_KEY"]
+  }
+}
+
+# ---------------------------------------------------------------------------
+# payzeno-api
+# ---------------------------------------------------------------------------
+
+module "payzeno_api" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-api"
+  environment    = local.environment
+  image          = local.images.api
+  container_port = 8080
+  desired_count  = 4
+
+  cpu    = 2048
+  memory = 4096
+
+  environment_vars = local.api_env
+  secrets          = local.api_secrets
+
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  cluster_arn           = aws_ecs_cluster.payzeno.arn
+  alb_listener_arn      = aws_lb_listener.https.arn
+  alb_security_group_id = aws_security_group.alb.id
+

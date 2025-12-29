@@ -47,10 +47,14 @@ services:
     ports: ["8080:8080"]
     environment:                       # keys drawn verbatim from §7
       NODE_ENV: development
+      PORT: "8080"
       REDIS_URL: redis://payzeno-redis:6379/0
       LEDGER_BASE_URL: http://payzeno-ledger:8000
+      BILLING_LEGACY_BASE_URL: http://payzeno-billing-legacy:8090
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
+      BILLING_LEGACY_PASSWORD: dev-legacy-password
+      NORDPAY_API_KEY: dev-nordpay-key
       API_KEY_PEPPER: dev-api-key-pepper
       AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
@@ -71,6 +75,8 @@ services:
       FLAG_LEDGER_OWNS_INVOICES: "false"
       FLAG_LEDGER_OWNS_FEES: "true"
       LOG_LEVEL: debug
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4318
+    depends_on:
       payzeno-redis:        { condition: service_healthy }
       payzeno-vault:        { condition: service_started }
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"] }
@@ -88,6 +94,8 @@ services:
     ports: ["8000:8000"]
     environment:
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
+      NORDPAY_BASE_URL: http://payzeno-acquirer-sandbox:9101
+
       # 20 above is not arbitrary: reconcile_batch holds three sessions in one pass and the
       # retry drain takes a fourth. modules/rds-postgres asserts max_connections >= 3x this.
       DATABASE_POOL_MAX_OVERFLOW: "10"
@@ -98,6 +106,7 @@ services:
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       NORDPAY_BREAKER_THRESHOLD_PCT: "50"
       NORDPAY_BREAKER_WINDOW: "100"
+      RECONCILE_SWEEP_INTERVAL_SECONDS: "900"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
       # false here and false on module.payzeno_ledger. It is true on exactly one thing in the
@@ -112,6 +121,18 @@ services:
 
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
+      payzeno-postgres-ledger: { condition: service_healthy }
+      payzeno-localstack:      { condition: service_healthy }
+    healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"] }
+
+  # -------------------------------------------------------------------------
+  # payzeno-billing-legacy — Spring Boot 2.7, MySQL 8, 2016. interfaces.md §7's legacy list.
+  # -------------------------------------------------------------------------
+  payzeno-billing-legacy:
+    build: { context: ../payzeno-billing-legacy }
+    ports: ["8090:8090"]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://payzeno-mysql-billing:3306/payzeno_billing
       PAYZENO_LEDGER_BASE_URL: http://payzeno-ledger:8000
       PAYZENO_API_BASE_URL: http://payzeno-api:8080
 
@@ -119,8 +140,19 @@ services:
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
       BILLING_INVOICE_PREFIX: LOCAL
+      BILLING_DUNNING_ENABLED: "false"
       VITE_PAYZENO_API_URL: http://localhost/v1
       VITE_ENVIRONMENT: local
+      VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
+    depends_on: [payzeno-api]
+
+  # -------------------------------------------------------------------------
+  # Vendor and backing services. No build context — these are not our code.
+  # -------------------------------------------------------------------------
+  payzeno-vault:
+    image: payzeno/card-vault:2.3
+    ports: ["8099:8099"]
+    environment:
       POSTGRES_USER: payzeno
       POSTGRES_DB: payzeno_api
     volumes: ["payzeno-postgres-api-data:/var/lib/postgresql/data"]
@@ -140,7 +172,10 @@ services:
     image: mysql:8.0
     ports: ["3306:3306"]
     environment:
+      MYSQL_ROOT_PASSWORD: payzeno
       MYSQL_USER: payzeno
+      MYSQL_PASSWORD: payzeno
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-upayzeno", "-ppayzeno"]
       retries: 30
 
   payzeno-redis:
@@ -149,6 +184,19 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
+      timeout: 3s
+      retries: 20
+
+  payzeno-localstack:
+    image: localstack/localstack:3
+    ports: ["4566:4566"]
+    environment:
+      # Quoted, and it matters: interfaces.md §6.2 writes this as a YAML flow mapping
+      # (`{ SERVICES: sns,sqs,s3,kms,secretsmanager }`) where the commas separate MAP ENTRIES,
+      # not list items — so `sqs`, `s3`, `kms` and `secretsmanager` parse as four keys with
+      # null values and localstack comes up with SNS only. Everything else then fails at
+      # runtime with a connection error nobody attributes to a comma.
+      SERVICES: "sns,sqs,s3,kms,secretsmanager"
       DEBUG: "0"
       timeout: 5s
       retries: 20

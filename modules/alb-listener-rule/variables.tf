@@ -10,6 +10,16 @@ variable "service" {
   type        = string
 }
 
+variable "name" {
+  description = "Short rule name. Becomes part of the tag Name — e.g. v1, internal-deny, ws-notifications."
+  type        = string
+}
+
+variable "listener_arn" {
+  description = "ARN of the HTTPS listener this rule attaches to."
+  type        = string
+}
+
 variable "path_patterns" {
   description = "Path patterns matched by this rule. ALB globs, not regexes: /internal/* not ^/internal/."
   type        = list(string)
@@ -25,5 +35,17 @@ variable "path_patterns" {
     ])
     error_message = "PAYZENO_INFRA_INVALID_INPUT: path patterns are absolute and start with /."
   }
+}
+
+variable "host_headers" {
+  description = "Optional host-header condition. Empty means the rule matches on path alone."
+  type        = list(string)
+  default     = []
+}
+
+variable "stickiness_duration" {
+  description = "Target-group stickiness in seconds for this rule. 0 disables it. Only the WebSocket rule uses it."
+  type        = number
+  default     = 0
 }
 

@@ -45,3 +45,84 @@ locals {
 }
 
 resource "aws_lb_listener_rule" "this" {
+  listener_arn = var.listener_arn
+  priority     = var.priority
+
+  dynamic "action" {
+    for_each = local.is_forward ? [1] : []
+
+    content {
+      type = "forward"
+
+      forward {
+        target_group {
+          arn = var.target_group_arn
+        }
+
+        dynamic "stickiness" {
+          for_each = var.stickiness_duration > 0 ? [1] : []
+
+          content {
+            enabled  = true
+            duration = var.stickiness_duration
+          }
+        }
+      }
+    }
+  }
+
+  dynamic "action" {
+    for_each = local.is_forward ? [] : [1]
+
+    content {
+      type = "fixed-response"
+
+      fixed_response {
+        content_type = "application/json"
+        message_body = local.deny_body
+        status_code  = "404"
+      }
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = var.path_patterns
+    }
+  }
+
+  dynamic "condition" {
+    for_each = length(var.host_headers) > 0 ? [1] : []
+
+    content {
+      host_header {
+        values = var.host_headers
+      }
+    }
+  }
+
+  tags = merge(module.names.tags, {
+    Name     = local.rule_name
+    Priority = tostring(var.priority)
+    Action   = var.action
+  })
+
+  lifecycle {
+    precondition {
+      condition     = !local.is_forward || var.target_group_arn != null
+      error_message = "PAYZENO_INFRA_PRECONDITION: a forward rule needs a target_group_arn. Rule '${var.name}' has action=forward and target_group_arn=null."
+    }
+
+    precondition {
+      condition     = local.is_forward || var.target_group_arn == null
+      error_message = "PAYZENO_INFRA_PRECONDITION: a deny rule must not carry a target_group_arn. If rule '${var.name}' is meant to forward, say so."
+    }
+
+    precondition {
+      condition     = local.is_forward || var.priority < 100
+      error_message = "PAYZENO_INFRA_PRECONDITION: deny rules live below priority 100 so they evaluate before any forward. Rule '${var.name}' is a deny at priority ${var.priority}, which is the exact shape of PAY-1811 — a deny that never fired for five months."
+    }
+  }
+}
+
+# Outputs stayed in main.tf when variables.tf was split out. See CONTRIBUTING.md §4 for
