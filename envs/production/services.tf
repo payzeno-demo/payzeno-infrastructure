@@ -179,3 +179,9 @@ module "payzeno_api" {
   alb_listener_arn      = aws_lb_listener.https.arn
   alb_security_group_id = aws_security_group.alb.id
 
+  # 90, not 365. arc PCI, PAY-1761 — request logs are in scope.
+  log_retention_days = 90
+
+  autoscaling_min        = 4
+  autoscaling_max        = 16
+  autoscaling_target_cpu = 55
