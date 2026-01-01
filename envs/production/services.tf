@@ -197,3 +197,9 @@ module "payzeno_api" {
 module "payzeno_ledger" {
   source = "../../modules/ecs-service"
 
+  service        = "payzeno-ledger"
+  environment    = local.environment
+  image          = local.images.ledger
+  container_port = 8000
+
+  # 4 -> 1 at 01:44 on the night of PAY-2041 ("scale to one task now, argue later"), back to
