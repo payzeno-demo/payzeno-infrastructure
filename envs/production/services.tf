@@ -203,3 +203,9 @@ module "payzeno_ledger" {
   container_port = 8000
 
   # 4 -> 1 at 01:44 on the night of PAY-2041 ("scale to one task now, argue later"), back to
+  # 4 at 09:05 the same morning once the hotfix was out. Two commits, seven hours apart.
+  desired_count = 4
+
+  cpu    = 2048
+  memory = 8192
+
