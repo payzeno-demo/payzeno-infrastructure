@@ -179,3 +179,33 @@ module "payzeno_api" {
   alb_listener_arn      = aws_lb_listener.https.arn
   alb_security_group_id = aws_security_group.alb.id
 
+  # 90, not 365. arc PCI, PAY-1761 — request logs are in scope.
+  log_retention_days = 90
+
+  autoscaling_min        = 4
+  autoscaling_max        = 16
+  autoscaling_target_cpu = 55
+
+  pager_topic_arn  = aws_sns_topic.payzeno_pager.arn
+  runbook_base_url = local.runbook_base_url
+}
+
+# ---------------------------------------------------------------------------
+# payzeno-ledger
+# ---------------------------------------------------------------------------
+
+module "payzeno_ledger" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-ledger"
+  environment    = local.environment
+  image          = local.images.ledger
+  container_port = 8000
+
+  # 4 -> 1 at 01:44 on the night of PAY-2041 ("scale to one task now, argue later"), back to
+  # 4 at 09:05 the same morning once the hotfix was out. Two commits, seven hours apart.
+  desired_count = 4
+
+  cpu    = 2048
+  memory = 8192
+
