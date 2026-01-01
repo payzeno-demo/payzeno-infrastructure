@@ -83,6 +83,23 @@ locals {
   rendered_config = join("\n", [local.upstream_block, local.server_blocks])
 }
 
+resource "aws_s3_object" "nginx_conf" {
+  bucket = local.config_bucket
+  key    = var.config_key
+
+  content      = local.rendered_config
+  content_type = "text/plain"
+
+  # Without this the object is replaced on every apply whose rendered content differs by a
+  # byte of whitespace, and every replacement is a silent config change that only takes
+  # effect on the next task start. The etag makes the diff honest.
+  etag = md5(local.rendered_config)
+
+  tags = merge(module.names.tags, {
+    Name = var.config_key
+  })
+}
+
 locals {
   # The container definition itself. modules/ecs-service concatenates this onto its own
   # app container and jsonencodes the pair — this is a HCL object, not a JSON string, so
@@ -146,6 +163,11 @@ data "aws_region" "current" {}
 output "container_definition" {
   description = "The nginx container definition object, concatenated into the task definition by modules/ecs-service."
   value       = local.container_definition
+}
+
+output "config_s3_uri" {
+  description = "s3:// URI of the rendered nginx config this task pulls at start."
+  value       = "s3://${local.config_bucket}/${aws_s3_object.nginx_conf.key}"
 }
 
 output "config_bucket_arn" {
