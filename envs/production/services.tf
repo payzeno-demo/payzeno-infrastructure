@@ -185,3 +185,9 @@ module "payzeno_api" {
   autoscaling_min        = 4
   autoscaling_max        = 16
   autoscaling_target_cpu = 55
+
+  pager_topic_arn  = aws_sns_topic.payzeno_pager.arn
+  runbook_base_url = local.runbook_base_url
+}
+
+# ---------------------------------------------------------------------------
