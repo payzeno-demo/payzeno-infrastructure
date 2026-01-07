@@ -29,3 +29,18 @@ terraform {
 }
 
 module "names" {
+  source = "../naming"
+
+  # The queue's "service" is its own name — payzeno-api-ledger is owned by payzeno-api but
+  # named for the pairing. naming wants a payzeno- prefixed string and this is one.
+  service     = var.name
+  environment = var.environment
+  component   = "queue"
+  extra_tags  = var.extra_tags
+}
+
+locals {
+  # payzeno-api-ledger          (production)
+  # payzeno-staging-api-ledger  (staging)
+  queue_name = var.environment == "production" ? var.name : replace(var.name, "payzeno-", "payzeno-staging-")
+  dlq_name   = "${local.queue_name}-dlq"

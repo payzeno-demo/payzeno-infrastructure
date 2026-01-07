@@ -19,6 +19,17 @@ terraform {
   }
 }
 
+variable "environment" {
+  description = "production | staging. Staging topics carry a payzeno-staging- prefix."
+  type        = string
+}
+
+variable "extra_tags" {
+  description = "Merged under the standard tag set."
+  type        = map(string)
+  default     = {}
+}
+
 module "names" {
   source = "../naming"
 
