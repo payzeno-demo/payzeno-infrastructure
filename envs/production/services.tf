@@ -209,3 +209,9 @@ module "payzeno_ledger" {
   cpu    = 2048
   memory = 8192
 
+  environment_vars = local.ledger_env
+  secrets          = local.ledger_secrets
+
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  cluster_arn           = aws_ecs_cluster.payzeno.arn
