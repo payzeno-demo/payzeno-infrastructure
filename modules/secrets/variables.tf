@@ -16,3 +16,13 @@ variable "environment" {
 }
 
 variable "secret_names" {
+  description = <<-EOT
+    Logical secret names, which become BOTH the Secrets Manager path leaf and the env var
+    name injected into the container. These are the names in interfaces.md §7 — e.g.
+    SESSION_SECRET, WORLDFLOW_API_KEY, DATABASE_URL. The value is never in terraform:
+    terraform creates the container and an initial random placeholder, a human rotates it.
+  EOT
+  type        = list(string)
+
+  validation {
+    condition     = length(var.secret_names) > 0

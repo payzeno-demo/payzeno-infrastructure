@@ -50,9 +50,32 @@ resource "aws_kms_alias" "this" {
   target_key_id = aws_kms_key.this.key_id
 }
 
+resource "aws_secretsmanager_secret" "this" {
+  for_each = local.secret_set
+
+  name                    = local.secret_path[each.key]
+  description             = "${each.key} for ${var.service} in ${var.environment}. Value set out of band — terraform only owns the container."
+  kms_key_id              = aws_kms_key.this.arn
+  recovery_window_in_days = var.recovery_window_days
+
+  tags = merge(module.names.tags, {
+    Name      = local.secret_path[each.key]
+    SecretKey = each.key
+  })
+}
+
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
 # Outputs. These stayed here when variables.tf was split out; see the note there.
 # ---------------------------------------------------------------------------
 
+output "task_secrets" {
+  description = "ECS `secrets[]` projection — [{ name, valueFrom }] — dropped straight into the container definition."
+  value = [
+    for n, s in aws_secretsmanager_secret.this : {
+      name      = n
+      valueFrom = s.arn
+    }
+  ]
+}
