@@ -28,6 +28,15 @@ terraform {
   }
 }
 
+module "names" {
+  source = "../naming"
+
+  service     = var.service
+  environment = var.environment
+  component   = "secrets"
+  extra_tags  = var.extra_tags
+}
+
 resource "aws_kms_key" "this" {
   description             = "Payzeno ${var.service} (${var.environment}) secret envelope key"
   enable_key_rotation     = true
@@ -69,6 +78,11 @@ data "aws_caller_identity" "current" {}
 # ---------------------------------------------------------------------------
 # Outputs. These stayed here when variables.tf was split out; see the note there.
 # ---------------------------------------------------------------------------
+
+output "kms_key_arn" {
+  description = "ARN of the per-service CMK. The execution role needs kms:Decrypt on it."
+  value       = aws_kms_key.this.arn
+}
 
 output "task_secrets" {
   description = "ECS `secrets[]` projection — [{ name, valueFrom }] — dropped straight into the container definition."
