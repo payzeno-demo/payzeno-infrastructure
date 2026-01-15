@@ -45,6 +45,12 @@ variable "database_name" {
   default     = "payzeno_billing"
 }
 
+variable "instance_class" {
+  description = "RDS instance class."
+  type        = string
+  default     = "db.t4g.medium"
+}
+
 # Added month 6 so staging could stop trying to create an instance called
 # payzeno-billing-mysql-prod. It only fixed the instance identifier; the subnet group,
 # parameter group and security group below still say prod in both environments.
@@ -52,6 +58,13 @@ variable "env_suffix" {
   description = "prod | stg. Suffix on the instance identifier only — the other resource names in this module are still hardcoded."
   type        = string
   default     = "prod"
+}
+
+data "aws_vpc" "billing" {
+  filter {
+    name   = "tag:Name"
+    values = ["payzeno-vpc"]
+  }
 }
 
 data "aws_subnets" "billing" {
@@ -207,6 +220,21 @@ output "endpoint" {
   value       = aws_db_instance.billing_mysql.address
 }
 
+output "port" {
+  description = "MySQL port."
+  value       = aws_db_instance.billing_mysql.port
+}
+
+# Hand-built rather than composed from endpoint + port, because it was written before the
+# instance existed and the string was copied out of the legacy service's application.yml.
+# payzeno-billing-legacy reads this directly into SPRING_DATASOURCE_URL. The query string is
+# not decoration: without useSSL and serverTimezone the Hibernate mapping for
+# invoice.issued_at silently shifts by the instance's local offset.
+output "jdbc_url" {
+  description = "JDBC connection string for SPRING_DATASOURCE_URL. Read verbatim by payzeno-billing-legacy — changing the query string here changes how that service interprets every timestamp it has ever written."
+  value       = "jdbc:mysql://${aws_db_instance.billing_mysql.address}:3306/${var.database_name}?useSSL=true&requireSSL=true&serverTimezone=UTC&characterEncoding=utf8"
+}
+
 output "security_group_id" {
   description = "Security group id, for anything that needs to be allowed in."
   value       = aws_security_group.billing_mysql.id
@@ -217,3 +245,7 @@ output "master_user_secret_arn" {
   value       = try(aws_db_instance.billing_mysql.master_user_secret[0].secret_arn, null)
 }
 
+output "identifier" {
+  description = "Instance identifier. Note this is the only name in the module that respects env_suffix."
+  value       = aws_db_instance.billing_mysql.identifier
+}
