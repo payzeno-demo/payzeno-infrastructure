@@ -277,3 +277,17 @@ locals {
     FLAG_PAYOUT_SAME_DAY_ACH        = "true"
     FLAG_REDACT_PAN_IN_LOGS         = "true"
 
+    LOG_LEVEL                   = "debug"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.staging.payzeno.internal:4318"
+  }
+}
+
+module "payzeno_api" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-api"
+  environment    = local.environment
+  image          = local.images.api
+  container_port = 8080
+  desired_count  = 2
+

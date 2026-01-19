@@ -48,6 +48,49 @@ module "q_api_webhooks" {
   depth_alarm_threshold = 500
 }
 
+resource "aws_sns_topic_subscription" "api_webhooks_payments" {
+  topic_arn = module.topic_payments_events.topic_arn
+  protocol  = "sqs"
+  endpoint  = module.q_api_webhooks.queue_arn
+
+  raw_message_delivery = false
+  filter_policy_scope  = "MessageAttributes"
+
+  filter_policy = jsonencode({
+    event_type = [
+      "payment.failed",
+      "refund.succeeded",
+      "refund.failed",
+      "dispute.evidence_submitted",
+    ]
+  })
+}
+
+# Two subscriptions, same as production. dispute.opened comes off the payments topic;
+# payout.failed and settlement.completed come off the ledger topic. One consumer
+# (NotificationRelayConsumer in payzeno-api) behind both.
+module "q_console_notifications" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-console-notifications"
+  environment = local.environment
+  topic_arn   = module.topic_ledger_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "payout.failed",
+      "settlement.completed",
+    ]
+  }
+
+  additional_topic_arns = [module.topic_payments_events.topic_arn]
+
+  message_retention_seconds = 86400
+  visibility_timeout        = 30
+  max_receive_count         = 3
+  depth_alarm_threshold     = 100
+}
+
 resource "aws_sns_topic_subscription" "console_notifications_payments" {
   topic_arn = module.topic_payments_events.topic_arn
   protocol  = "sqs"
@@ -60,4 +103,25 @@ resource "aws_sns_topic_subscription" "console_notifications_payments" {
     event_type = ["dispute.opened"]
   })
 }
+
+module "q_dlq_monitor" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-dlq-monitor"
+  environment = local.environment
+  topic_arn   = null
+
+  message_retention_seconds = 604800
+  visibility_timeout        = 60
+  max_receive_count         = 3
+  depth_alarm_threshold     = 1
+}
+
+# Removed month 12. `payzeno-api-support-tasks` lived here for two weeks in month 11 for a
+# load-test spike (PAY-2118) and was deleted once the spike was answered. Leaving the note
+# rather than the queue, because the same idea has come up twice since and the answer both
+# times was "the api opens a support task synchronously in LedgerEventsConsumer; it does not
+# need a queue for it".
+#
+# module "q_api_support_tasks" { ... }  <- deleted, PAY-2131
 
