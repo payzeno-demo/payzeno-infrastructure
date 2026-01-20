@@ -66,6 +66,35 @@ Things worth stopping for, none of which terraform highlights:
 
 ---
 
+## Environment variables
+
+The most common change in this repo, and the easiest to do half of.
+
+1. `docker-compose.yml`, under the service's `environment:`.
+2. `envs/production/services.tf` **and** `envs/staging/stack.tf`, in `environment_vars`.
+3. Credentials go in `secrets` instead, backed by `modules/secrets`. Never in
+   `environment_vars` — `modules/ecs-service` rejects anything that looks like one.
+4. `modules/ecs-service/variables.tf`'s allowed-key list, and `local.allowed_env_keys` in
+   `modules/ecs-service/main.tf` for the service's own list. Miss this and the validation
+   rejects your own change with the exact reason.
+5. The service repo's config module and `.env.example`.
+
+Then deploy the **service**, not the infrastructure. A changed task definition does not reach
+a running task until the service is redeployed:
+
+```bash
+aws ecs update-service --cluster $CLUSTER --service $SVC --force-new-deployment
+```
+
+This trips people up roughly monthly. `terraform apply` writes a new task definition
+revision; the service keeps running the old one until something tells it not to.
+
+Console `VITE_*` values are different again: they are build-time, stored in SSM, and baked
+into the bundle by Vite. Changing one does nothing at all until the console is rebuilt and
+redeployed. The SSM parameters carry a `Rebuild = required` tag as a reminder.
+
+---
+
 ## Deploying the console
 
 ```bash
@@ -100,6 +129,22 @@ needs a reboot, and `apply_immediately` is `false` by default — the change wil
 until the maintenance window. That has caught us: the month-7 ledger instance-class bump
 waited six days while everyone assumed it had applied. `module.db_ledger` sets
 `apply_immediately = true` now for exactly that reason.
+
+---
+
+## Provider and lock file
+
+`.terraform.lock.hcl` is committed for both roots and CI fails on a diff. A provider bump is
+two files:
+
+```bash
+# edit the constraint in envs/<env>/versions.tf, then
+make lock ENV=<env>
+```
+
+The two roots are pinned differently on purpose (production `~> 5.49`, staging `~> 5.42`).
+Do not unify them in a PR that is about something else. The last attempt produced a 400-line
+tag-only plan diff at 18:00 on a Friday and was reverted the same night — PAY-1904.
 
 ---
 

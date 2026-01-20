@@ -22,6 +22,25 @@ applies. If you need something applied, say so on the PR and infra will do it.
 
 ---
 
+## 2. Provider pins and the lock file
+
+`.terraform.lock.hcl` **is committed**, for both roots. CI regenerates it and fails on a
+diff, so a provider bump is a deliberate two-file change: the constraint in `versions.tf`
+and the lock.
+
+The two roots are pinned differently on purpose right now (production `~> 5.49`, staging
+`~> 5.42`). That is drift, it is tracked, and it is not something to "just fix" in an
+unrelated PR — the last attempt produced a 400-line tag-only plan diff on a Friday evening
+and got reverted the same night.
+
+Lock refresh:
+
+```bash
+make lock ENV=production   # darwin_arm64 + linux_amd64 + linux_arm64
+```
+
+---
+
 ### `PAYZENO_INFRA_PRECONDITION` — `lifecycle { precondition { ... } }`
 
 Invariants that depend on resolved values, not just inputs — a relationship between two
