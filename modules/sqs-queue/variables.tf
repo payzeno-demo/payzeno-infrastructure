@@ -72,6 +72,23 @@ variable "filter_policy" {
   }
 }
 
+variable "visibility_timeout" {
+  description = "Seconds a received message is hidden from other consumers. Must exceed the consumer's slowest handler — the ledger's payment consumer does acquirer I/O, so its queues get 300."
+  type        = number
+  default     = 60
+}
+
+variable "message_retention_seconds" {
+  description = "How long an undelivered message survives. Four days by default; the DLQ always keeps fourteen."
+  type        = number
+  default     = 345600
+
+  validation {
+    condition     = var.message_retention_seconds >= 3600 && var.message_retention_seconds <= 1209600
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: message_retention_seconds must be between 3600 (1h) and 1209600 (14d)."
+  }
+}
+
 variable "max_receive_count" {
   description = "Deliveries before a message goes to the DLQ. Low enough that a poison message stops fast, high enough that a thirty-second acquirer blip does not park real work."
   type        = number
@@ -83,6 +100,17 @@ variable "max_receive_count" {
   }
 }
 
+variable "age_alarm_threshold_seconds" {
+  description = "ApproximateAgeOfOldestMessage threshold. Added by PAY-2055 — no queue had one before month 9, which is why the retry backlog was invisible for 22 minutes."
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.age_alarm_threshold_seconds >= 60
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: an age alarm below 60s fires on normal batch behaviour and gets muted, which is worse than not having it."
+  }
+}
+
 variable "depth_alarm_threshold" {
   description = "ApproximateNumberOfMessagesVisible threshold. Catches 'consuming but losing ground', which age does not — every message in a 4,113-item backlog can be young."
   type        = number
@@ -91,6 +119,12 @@ variable "depth_alarm_threshold" {
 
 variable "consumer_role_arns" {
   description = "Task role ARNs allowed to receive and delete from this queue. Usually exactly one — the owning service."
+  type        = list(string)
+  default     = []
+}
+
+variable "alarm_actions" {
+  description = "SNS topics this queue's three alarms notify. Empty in staging."
   type        = list(string)
   default     = []
 }

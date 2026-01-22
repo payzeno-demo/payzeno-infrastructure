@@ -46,3 +46,21 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+resource "aws_sns_topic_subscription" "api_webhooks_payments" {
+  topic_arn = module.topic_payments_events.topic_arn
+  protocol  = "sqs"
+  endpoint  = module.q_api_webhooks.queue_arn
+
+  raw_message_delivery = false
+  filter_policy_scope  = "MessageAttributes"
+
+  filter_policy = jsonencode({
+    event_type = [
+      "payment.failed",
+      "refund.succeeded",
+      "refund.failed",
+      "dispute.evidence_submitted",
+    ]
+  })
+}
+
