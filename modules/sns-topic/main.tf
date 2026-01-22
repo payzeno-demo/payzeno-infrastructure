@@ -90,3 +90,12 @@ resource "aws_sns_topic" "this" {
   })
 }
 
+output "topic_arn" {
+  description = "ARN of the topic. Read by the publishing service as SNS_*_TOPIC_ARN and by every sqs-queue subscription."
+  value       = aws_sns_topic.this.arn
+}
+
+output "topic_name" {
+  description = "Resolved topic name, environment prefix included."
+  value       = aws_sns_topic.this.name
+}

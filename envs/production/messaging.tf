@@ -46,6 +46,35 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+module "q_ledger_merchants" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-ledger-merchants"
+  environment = local.environment
+  topic_arn   = module.topic_merchant_events.topic_arn
+
+  # MerchantEventConsumer (payzeno-ledger) — maintains the ledger's merchant projection.
+  filter_policy = {
+    event_type = [
+      "merchant.created",
+      "merchant.updated",
+      "merchant.status_changed",
+      "merchant.bank_account_verified",
+    ]
+  }
+
+  visibility_timeout          = 60
+  age_alarm_threshold_seconds = 600
+  depth_alarm_threshold       = 500
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+# ---------------------------------------------------------------------------
+# Queues — payzeno-api consumers
+# ---------------------------------------------------------------------------
+
 resource "aws_sns_topic_subscription" "api_webhooks_payments" {
   topic_arn = module.topic_payments_events.topic_arn
   protocol  = "sqs"
