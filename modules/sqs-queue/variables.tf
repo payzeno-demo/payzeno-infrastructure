@@ -19,6 +19,17 @@ variable "name" {
   }
 }
 
+variable "environment" {
+  description = "production | staging."
+  type        = string
+}
+
+variable "topic_arn" {
+  description = "SNS topic this queue subscribes to. Null creates the queue with no subscription, which is only right for the DLQ monitor (it is fed by redrive, not by a topic)."
+  type        = string
+  default     = null
+}
+
 variable "additional_topic_arns" {
   description = <<-EOT
     Extra topics allowed to deliver into this queue. The subscription resources for these are
@@ -72,6 +83,23 @@ variable "filter_policy" {
   }
 }
 
+variable "visibility_timeout" {
+  description = "Seconds a received message is hidden from other consumers. Must exceed the consumer's slowest handler — the ledger's payment consumer does acquirer I/O, so its queues get 300."
+  type        = number
+  default     = 60
+}
+
+variable "message_retention_seconds" {
+  description = "How long an undelivered message survives. Four days by default; the DLQ always keeps fourteen."
+  type        = number
+  default     = 345600
+
+  validation {
+    condition     = var.message_retention_seconds >= 3600 && var.message_retention_seconds <= 1209600
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: message_retention_seconds must be between 3600 (1h) and 1209600 (14d)."
+  }
+}
+
 variable "max_receive_count" {
   description = "Deliveries before a message goes to the DLQ. Low enough that a poison message stops fast, high enough that a thirty-second acquirer blip does not park real work."
   type        = number
@@ -80,6 +108,17 @@ variable "max_receive_count" {
   validation {
     condition     = var.max_receive_count >= 3 && var.max_receive_count <= 10
     error_message = "PAYZENO_INFRA_INVALID_INPUT: max_receive_count must be between 3 and 10. Below 3, a transient failure DLQs real work; above 10, a poison message is retried for long enough to matter and nobody notices."
+  }
+}
+
+variable "age_alarm_threshold_seconds" {
+  description = "ApproximateAgeOfOldestMessage threshold. Added by PAY-2055 — no queue had one before month 9, which is why the retry backlog was invisible for 22 minutes."
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.age_alarm_threshold_seconds >= 60
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: an age alarm below 60s fires on normal batch behaviour and gets muted, which is worse than not having it."
   }
 }
 
@@ -93,6 +132,18 @@ variable "consumer_role_arns" {
   description = "Task role ARNs allowed to receive and delete from this queue. Usually exactly one — the owning service."
   type        = list(string)
   default     = []
+}
+
+variable "alarm_actions" {
+  description = "SNS topics this queue's three alarms notify. Empty in staging."
+  type        = list(string)
+  default     = []
+}
+
+variable "runbook_base_url" {
+  description = "Base URL for the runbook links on this queue's alarms."
+  type        = string
+  default     = "https://github.com/payzeno/payzeno-infrastructure/blob/main/docs/runbooks"
 }
 
 variable "extra_tags" {

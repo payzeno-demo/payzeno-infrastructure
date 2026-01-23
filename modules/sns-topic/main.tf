@@ -19,8 +19,23 @@ terraform {
   }
 }
 
+variable "name" {
+  description = "Bare topic name from events.ts, e.g. payzeno-ledger-events."
+  type        = string
+
+  validation {
+    condition     = can(regex("^payzeno-[a-z-]+$", var.name))
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: topic name must match ^payzeno-[a-z-]+$ and must be a name that appears in payzeno-contracts' events.ts header table."
+  }
+}
+
 variable "environment" {
   description = "production | staging. Staging topics carry a payzeno-staging- prefix."
+  type        = string
+}
+
+variable "kms_key_arn" {
+  description = "CMK used for at-rest encryption of the topic. The publishing service's execution role needs kms:GenerateDataKey on it."
   type        = string
 }
 
@@ -40,6 +55,12 @@ module "names" {
   environment = var.environment
   component   = "topic"
   extra_tags  = var.extra_tags
+}
+
+locals {
+  # payzeno-ledger-events        (production)
+  # payzeno-staging-ledger-events (staging)
+  topic_name = var.environment == "production" ? var.name : replace(var.name, "payzeno-", "payzeno-staging-")
 }
 
 resource "aws_sns_topic" "this" {
@@ -69,3 +90,12 @@ resource "aws_sns_topic" "this" {
   })
 }
 
+output "topic_arn" {
+  description = "ARN of the topic. Read by the publishing service as SNS_*_TOPIC_ARN and by every sqs-queue subscription."
+  value       = aws_sns_topic.this.arn
+}
+
+output "topic_name" {
+  description = "Resolved topic name, environment prefix included."
+  value       = aws_sns_topic.this.name
+}

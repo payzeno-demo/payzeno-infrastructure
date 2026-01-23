@@ -44,3 +44,18 @@ locals {
   # payzeno-staging-api-ledger  (staging)
   queue_name = var.environment == "production" ? var.name : replace(var.name, "payzeno-", "payzeno-staging-")
   dlq_name   = "${local.queue_name}-dlq"
+
+  has_subscription = var.topic_arn != null
+
+  # Every topic allowed to deliver into this queue. Normally one. payzeno-console-notifications
+  # is the exception: it takes dispute.opened from the payments topic and payout.failed /
+  # settlement.completed from the ledger topic, so envs/*/messaging.tf hands it a second ARN
+  # here and creates the second aws_sns_topic_subscription itself.
+  delivering_topic_arns = compact(concat([var.topic_arn], var.additional_topic_arns))
+
+  filter_event_types = try(var.filter_policy["event_type"], [])
+}
+
+resource "aws_sqs_queue" "dlq" {
+  name = local.dlq_name
+
