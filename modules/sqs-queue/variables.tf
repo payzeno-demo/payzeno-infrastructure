@@ -19,6 +19,17 @@ variable "name" {
   }
 }
 
+variable "environment" {
+  description = "production | staging."
+  type        = string
+}
+
+variable "topic_arn" {
+  description = "SNS topic this queue subscribes to. Null creates the queue with no subscription, which is only right for the DLQ monitor (it is fed by redrive, not by a topic)."
+  type        = string
+  default     = null
+}
+
 variable "additional_topic_arns" {
   description = <<-EOT
     Extra topics allowed to deliver into this queue. The subscription resources for these are
@@ -127,6 +138,12 @@ variable "alarm_actions" {
   description = "SNS topics this queue's three alarms notify. Empty in staging."
   type        = list(string)
   default     = []
+}
+
+variable "runbook_base_url" {
+  description = "Base URL for the runbook links on this queue's alarms."
+  type        = string
+  default     = "https://github.com/payzeno/payzeno-infrastructure/blob/main/docs/runbooks"
 }
 
 variable "extra_tags" {
