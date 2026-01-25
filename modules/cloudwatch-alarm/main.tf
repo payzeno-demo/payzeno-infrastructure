@@ -60,3 +60,10 @@ variable "extended_statistic" {
 
 variable "comparison_operator" {
   description = "GreaterThanThreshold, GreaterThanOrEqualToThreshold, LessThanThreshold, LessThanOrEqualToThreshold."
+  type        = string
+  default     = "GreaterThanThreshold"
+}
+
+variable "threshold" {
+  description = "Threshold the statistic is compared against."
+  type        = number
