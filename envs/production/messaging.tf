@@ -46,6 +46,37 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+module "q_ledger_payments" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-ledger-payments"
+  environment = local.environment
+  topic_arn   = module.topic_payments_events.topic_arn
+
+  # PaymentEventConsumer (payzeno-ledger). api-surface.md §14.
+  filter_policy = {
+    event_type = [
+      "payment.authorized",
+      "payment.captured",
+      "payment.canceled",
+      "refund.created",
+      "dispute.opened",
+      "dispute.closed",
+    ]
+  }
+
+  # This consumer does acquirer I/O inside the handler on the capture_at_settlement path.
+  # 60s was not enough and the redeliveries were doing real work twice.
+  visibility_timeout = 300
+  max_receive_count  = 5
+
+  age_alarm_threshold_seconds = 300
+  depth_alarm_threshold       = 2000
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
 module "q_ledger_merchants" {
   source = "../../modules/sqs-queue"
 
