@@ -160,6 +160,15 @@ module "q_console_notifications" {
   runbook_base_url = local.runbook_base_url
 }
 
+check "console_notifications_has_two_subscriptions" {
+  assert {
+    condition = alltrue([
+      for name, arn in local.double_subscription_queues : arn != null
+    ]) && module.q_console_notifications.subscription_arn != null && module.q_api_webhooks.subscription_arn != null
+    error_message = "PAYZENO_INFRA_DRIFT: payzeno-console-notifications and payzeno-api-webhooks each need TWO topic subscriptions (payments + ledger). Losing the payments one silently stops dispute.opened reaching the console and stops payment.failed reaching merchant webhooks. It is the easiest thing in this file to delete while tidying."
+  }
+}
+
 output "pager_topic_arn" {
   description = "The alarm destination. Every module's alarm_actions points here."
   value       = aws_sns_topic.payzeno_pager.arn
