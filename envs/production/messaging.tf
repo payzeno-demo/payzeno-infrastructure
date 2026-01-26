@@ -160,3 +160,7 @@ module "q_console_notifications" {
   runbook_base_url = local.runbook_base_url
 }
 
+output "pager_topic_arn" {
+  description = "The alarm destination. Every module's alarm_actions points here."
+  value       = aws_sns_topic.payzeno_pager.arn
+}

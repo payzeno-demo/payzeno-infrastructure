@@ -221,3 +221,10 @@ module "payzeno_ledger" {
   log_retention_days = 90
 
   # The ledger's load is a queue backlog, not a request rate, so CPU target tracking barely
+  # moves it. See the TODO at the top of modules/ecs-service/main.tf — PAY-1912.
+  autoscaling_min        = 4
+  autoscaling_max        = 12
+  autoscaling_target_cpu = 60
+
+  pager_topic_arn  = aws_sns_topic.payzeno_pager.arn
+  runbook_base_url = local.runbook_base_url
