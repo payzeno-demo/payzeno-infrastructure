@@ -93,3 +93,39 @@ resource "aws_sns_topic_subscription" "api_webhooks_payments" {
   })
 }
 
+# THE DOUBLE-SUBSCRIBED QUEUE. Do not "tidy" this.
+#
+# NotificationRelayConsumer (payzeno-api) pushes to NotificationsGateway, which fans out over
+# the /ws/notifications WebSocket to the console. It needs payout.failed and
+# settlement.completed (ledger topic) AND dispute.opened (payments topic). One queue, one
+# consumer, two topics, two filter policies. events.ts's header table says so explicitly and
+# api-surface.md §14 says so again.
+#
+# The module creates the ledger subscription; the payments one is the raw resource below.
+module "q_console_notifications" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-console-notifications"
+  environment = local.environment
+  topic_arn   = module.topic_ledger_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "payout.failed",
+      "settlement.completed",
+    ]
+  }
+
+  additional_topic_arns = [module.topic_payments_events.topic_arn]
+
+  # A notification nobody is connected to receive is not worth redelivering for four days.
+  message_retention_seconds   = 86400
+  visibility_timeout          = 30
+  max_receive_count           = 3
+  age_alarm_threshold_seconds = 180
+  depth_alarm_threshold       = 500
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+

@@ -215,3 +215,9 @@ module "payzeno_ledger" {
   vpc_id                = local.vpc_id
   subnet_ids            = local.subnet_ids
   cluster_arn           = aws_ecs_cluster.payzeno.arn
+  alb_listener_arn      = aws_lb_listener.https.arn
+  alb_security_group_id = aws_security_group.alb.id
+
+  log_retention_days = 90
+
+  # The ledger's load is a queue backlog, not a request rate, so CPU target tracking barely
