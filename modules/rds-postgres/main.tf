@@ -36,3 +36,21 @@ module "credentials" {
 
   service      = var.service
   environment  = var.environment
+  purpose      = "db"
+  secret_names = ["DATABASE_URL", "DATABASE_PASSWORD"]
+
+  # Rotating DATABASE_URL means rotating the password inside it, and the rotation lambda
+  # has to do both together or the URL goes stale. It does. 90 days.
+  rotation_days = var.rotation_days
+  extra_tags    = var.extra_tags
+}
+
+locals {
+  identifier = module.names.id
+
+  # Sensible-for-Payzeno defaults, then whatever the caller overrides. Ordering matters:
+  # var.parameters wins, so a caller can raise work_mem for the ledger without forking the
+  # module.
+  base_parameters = {
+    # arc PERF, PAY-1744. Without this there is no query-level visibility at all and the
+    # only tool left is EXPLAIN on a query you already suspect.

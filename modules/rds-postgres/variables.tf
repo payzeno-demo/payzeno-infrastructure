@@ -10,6 +10,33 @@ variable "service" {
   type        = string
 }
 
+variable "database_name" {
+  description = "Logical database created on the instance. payzeno_api | payzeno_ledger. Underscores, not hyphens — Postgres identifier rules, and data-model.md uses these names."
+  type        = string
+
+  validation {
+    condition     = can(regex("^payzeno_[a-z_]+$", var.database_name))
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: database_name must match ^payzeno_[a-z_]+$ and must be a database named in data-model.md."
+  }
+}
+
+variable "engine_version" {
+  description = "Postgres major.minor. Both instances track the same major; minors move in the maintenance window."
+  type        = string
+  default     = "15.6"
+
+  validation {
+    condition     = startswith(var.engine_version, "15.")
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: this module's parameter group family is postgres15. A major bump is a migration plan, not a variable change."
+  }
+}
+
+variable "allocated_storage" {
+  description = "Initial storage in GiB."
+  type        = number
+  default     = 100
+}
+
 variable "parameters" {
   description = "Extra Postgres parameters, merged over the module's defaults (which include pg_stat_statements and the connection budget). Caller wins."
   type        = map(string)

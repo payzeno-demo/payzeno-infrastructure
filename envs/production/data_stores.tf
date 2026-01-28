@@ -15,3 +15,11 @@ module "db_api" {
   service       = "payzeno-api"
   environment   = local.environment
   database_name = "payzeno_api"
+
+  instance_class        = "db.r6g.large"
+  allocated_storage     = 200
+  max_allocated_storage = 800
+  multi_az              = true
+
+  # The api runs a smaller pool than the ledger — its work is request-shaped, not
+  # batch-shaped. 3 x 10 x 4 tasks, plus migrations and headroom.
