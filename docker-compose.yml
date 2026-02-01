@@ -78,6 +78,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4318
     depends_on:
       payzeno-redis:        { condition: service_healthy }
+      payzeno-localstack:   { condition: service_healthy }
       payzeno-vault:        { condition: service_started }
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"] }
 
@@ -93,6 +94,7 @@ services:
     build: { context: ../payzeno-ledger }
     ports: ["8000:8000"]
     environment:
+      DATABASE_URL: postgresql+asyncpg://payzeno:payzeno@payzeno-postgres-ledger:5432/payzeno_ledger
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
       NORDPAY_BASE_URL: http://payzeno-acquirer-sandbox:9101
 
@@ -109,6 +111,8 @@ services:
       RECONCILE_SWEEP_INTERVAL_SECONDS: "900"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
+      RECONCILE_RETRY_BACKOFF_BASE_SECONDS: "30"
+
       # false here and false on module.payzeno_ledger. It is true on exactly one thing in the
       # world: module.payzeno_ledger_canary, one task, a PAY-1688 leftover. That asymmetry is
       # why a 4,113-item backlog drained through a single task for 21 minutes. Turn it on in
@@ -119,6 +123,7 @@ services:
       PAYOUT_CUTOFF_SEPA_UTC: "14:00"
       PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
 
+      LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
       payzeno-postgres-ledger: { condition: service_healthy }
@@ -166,6 +171,7 @@ services:
     # ledger its own; the settlement sweep is the noisiest reader in the platform and it is
     # not sharing a buffer cache with the API's request path.
     healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_ledger"]
       retries: 20
 
   payzeno-mysql-billing:
@@ -198,6 +204,7 @@ services:
       # runtime with a connection error nobody attributes to a comma.
       SERVICES: "sns,sqs,s3,kms,secretsmanager"
       DEBUG: "0"
+      test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
       timeout: 5s
       retries: 20
 
