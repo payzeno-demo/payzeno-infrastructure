@@ -26,6 +26,9 @@ services:
   # -------------------------------------------------------------------------
   payzeno-acquirer-sandbox:
     image: payzeno/acquirer-sandbox:1.4
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - payzeno-console-dist:/srv/console:ro
     configs:
       - source: nginx-main
         target: /etc/nginx/nginx.conf
@@ -36,6 +39,15 @@ services:
       - payzeno-console-dist:/usr/share/nginx/html
 
   payzeno-localstack:
+    configs:
+      - source: localstack-init
+        target: /etc/localstack/init/ready.d/init-aws.sh
+        mode: 0555
+
+  # -------------------------------------------------------------------------
+  # Debug ports. Attach a debugger without editing the base file.
+  # -------------------------------------------------------------------------
+  payzeno-api:
     ports:
       - "8090:8090"
       - "5005:5005"       # JDWP

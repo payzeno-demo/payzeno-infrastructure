@@ -123,6 +123,7 @@ services:
       PAYOUT_CUTOFF_SEPA_UTC: "14:00"
       PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
 
+      LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
       payzeno-postgres-ledger: { condition: service_healthy }
@@ -170,6 +171,7 @@ services:
     # ledger its own; the settlement sweep is the noisiest reader in the platform and it is
     # not sharing a buffer cache with the API's request path.
     healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_ledger"]
       retries: 20
 
   payzeno-mysql-billing:
@@ -202,6 +204,7 @@ services:
       # runtime with a connection error nobody attributes to a comma.
       SERVICES: "sns,sqs,s3,kms,secretsmanager"
       DEBUG: "0"
+      test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
       timeout: 5s
       retries: 20
 
