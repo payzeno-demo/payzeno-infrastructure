@@ -61,3 +61,68 @@ services:
   # localstack is nobody's environment, so the queue is `payzeno-api-ledger`, not
   # `payzeno-api-ledger-local`.
   localstack-init:
+    content: |
+      #!/bin/sh
+      set -eu
+      AWS="awslocal --region eu-west-1"
+
+      echo "--> topics"
+      for t in payzeno-payments-events payzeno-ledger-events payzeno-merchant-events payzeno-billing-events; do
+        $AWS sns create-topic --name "$t" >/dev/null
+      done
+
+      echo "--> queues (+ dlq for each, redrive maxReceiveCount 5)"
+      for q in payzeno-ledger-payments payzeno-ledger-merchants payzeno-api-ledger \
+               payzeno-api-webhooks payzeno-console-notifications payzeno-api-billing \
+               payzeno-billing-merchants payzeno-dlq-monitor; do
+        $AWS sqs create-queue --queue-name "$q-dlq" >/dev/null
+        DLQ_ARN=$($AWS sqs get-queue-attributes --queue-url "http://localhost:4566/000000000000/$q-dlq" \
+                    --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)
+        $AWS sqs create-queue --queue-name "$q" \
+          --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"$DLQ_ARN\\\",\\\"maxReceiveCount\\\":\\\"5\\\"}\"}" >/dev/null
+      done
+
+      subscribe() {   # subscribe <topic> <queue> <event_type json array>
+        $AWS sns subscribe \
+          --topic-arn "arn:aws:sns:eu-west-1:000000000000:$1" \
+          --protocol sqs \
+          --notification-endpoint "arn:aws:sqs:eu-west-1:000000000000:$2" \
+          --attributes "FilterPolicy={\"event_type\":$3},FilterPolicyScope=MessageAttributes" >/dev/null
+      }
+
+      echo "--> subscriptions"
+      subscribe payzeno-payments-events payzeno-ledger-payments \
+        '["payment.authorized","payment.captured","payment.canceled","refund.created","dispute.opened","dispute.closed"]'
+      subscribe payzeno-merchant-events payzeno-ledger-merchants \
+        '["merchant.created","merchant.updated","merchant.status_changed","merchant.bank_account_verified"]'
+      subscribe payzeno-ledger-events payzeno-api-ledger \
+        '["settlement.completed","settlement.duplicate_detected","settlement.variance_detected","payout.paid","payout.failed","payout.returned","ledger.imbalance_detected"]'
+      subscribe payzeno-ledger-events payzeno-api-webhooks \
+        '["payout.scheduled","settlement.item_settled"]'
+      subscribe payzeno-payments-events payzeno-api-webhooks \
+        '["payment.failed","refund.succeeded","refund.failed","dispute.evidence_submitted"]'
+      subscribe payzeno-billing-events payzeno-api-billing \
+        '["invoice.issued"]'
+      subscribe payzeno-merchant-events payzeno-billing-merchants \
+        '["merchant.created","merchant.updated","merchant.status_changed"]'
+
+      # THE DOUBLE SUBSCRIPTION. payzeno-console-notifications needs payout.failed and
+      # settlement.completed off the ledger topic AND dispute.opened off the payments topic.
+      # One queue, one consumer (payzeno-api's NotificationRelayConsumer), two topics.
+      # Drop either line and half the console's toasts stop arriving with no error anywhere.
+      subscribe payzeno-ledger-events payzeno-console-notifications \
+        '["payout.failed","settlement.completed"]'
+      subscribe payzeno-payments-events payzeno-console-notifications \
+        '["dispute.opened"]'
+
+      # settlement.batch_closed, settlement.reconciliation_failed and ledger.transaction_posted
+      # have no subscriber, here or in terraform. That is deliberate (api-surface.md §14) —
+      # they are audit-trail only. Do not "fix" it.
+
+      echo "--> buckets, kms alias, secrets"
+      $AWS s3 mb s3://payzeno-local-service-config >/dev/null || true
+      KEY_ID=$($AWS kms create-key --description "payzeno webhook signing KEK (local)" --query 'KeyMetadata.KeyId' --output text)
+      $AWS kms create-alias --alias-name alias/payzeno-webhook-kek --target-key-id "$KEY_ID" >/dev/null || true
+      $AWS secretsmanager create-secret --name payzeno/local/webhook-signing-kek --secret-string "local-kek" >/dev/null || true
+
+      echo "--> localstack bootstrap complete"
