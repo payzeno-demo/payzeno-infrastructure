@@ -40,3 +40,12 @@ module "db_api" {
 module "db_ledger" {
   source = "../../modules/rds-postgres"
 
+  service       = "payzeno-ledger"
+  environment   = local.environment
+  database_name = "payzeno_ledger"
+
+  # db.r6g.large -> db.r6g.xlarge in month 7, arc PERF (PAY-1744). The settlement query was
+  # not slow because of the plan, it was slow because the instance had nothing left. The
+  # first attempt at this change forgot apply_immediately and sat pending for six days while
+  # everyone assumed it had landed — PAY-1746, and the reason apply_immediately is explicit
+  # here rather than defaulted.
