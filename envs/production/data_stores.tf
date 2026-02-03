@@ -49,3 +49,11 @@ module "db_ledger" {
   # first attempt at this change forgot apply_immediately and sat pending for six days while
   # everyone assumed it had landed — PAY-1746, and the reason apply_immediately is explicit
   # here rather than defaulted.
+  instance_class        = "db.r6g.xlarge"
+  allocated_storage     = 500
+  max_allocated_storage = 2000
+  multi_az              = true
+  apply_immediately     = true
+
+  # DATABASE_POOL_SIZE = 20 (interfaces.md §7). Four tasks hold a full pool each, the sweep
+  # and the drain each hold one on top of that, alembic takes two during a deploy, and there
