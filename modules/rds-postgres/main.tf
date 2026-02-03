@@ -54,3 +54,22 @@ locals {
   base_parameters = {
     # arc PERF, PAY-1744. Without this there is no query-level visibility at all and the
     # only tool left is EXPLAIN on a query you already suspect.
+    shared_preload_libraries = "pg_stat_statements"
+
+    "pg_stat_statements.track"            = "all"
+    "pg_stat_statements.max"              = "10000"
+    "pg_stat_statements.save"             = "on"
+    "log_min_duration_statement"          = "500"
+    "log_lock_waits"                      = "1"
+    "deadlock_timeout"                    = "1000"
+    "idle_in_transaction_session_timeout" = "60000"
+
+    # max_connections is not "whatever the instance class defaults to". It is
+    # 3 x the application's pool size, per service, plus headroom for the sweep jobs,
+    # migrations and a human with psql. See the precondition below and interfaces.md §3.1
+    # rule 4 — the ledger runs DATABASE_POOL_SIZE=20 and every task holds a full pool.
+    max_connections = tostring(var.max_connections)
+  }
+
+  parameters = merge(local.base_parameters, var.parameters)
+

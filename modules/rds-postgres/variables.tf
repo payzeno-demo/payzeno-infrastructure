@@ -43,8 +43,31 @@ variable "parameters" {
   default     = {}
 }
 
+variable "master_username" {
+  description = "Master user. The password is RDS-managed and terraform never holds it."
+  type        = string
+  default     = "payzeno"
+}
+
+variable "vpc_id" {
+  description = "VPC the instance and its security group live in."
+  type        = string
+}
+
 variable "allowed_security_group_ids" {
   description = "Security groups permitted inbound on 5432. In practice this is the owning service's task SG, and nothing else."
+  type        = list(string)
+  default     = []
+}
+
+variable "monitoring_role_arn" {
+  description = "Enhanced-monitoring role ARN. One per account, created outside this module."
+  type        = string
+  default     = null
+}
+
+variable "alarm_actions" {
+  description = "SNS topics the two alarms notify. Empty in staging."
   type        = list(string)
   default     = []
 }

@@ -23,3 +23,12 @@ module "db_api" {
 
   # The api runs a smaller pool than the ledger — its work is request-shaped, not
   # batch-shaped. 3 x 10 x 4 tasks, plus migrations and headroom.
+  client_pool_size = 10
+  max_connections  = 200
+
+  performance_insights_enabled = true
+
+  backup_retention_days = 21
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  monitoring_role_arn   = aws_iam_role.rds_monitoring.arn
