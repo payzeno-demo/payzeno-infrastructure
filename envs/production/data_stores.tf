@@ -32,3 +32,11 @@ module "db_api" {
   vpc_id                = local.vpc_id
   subnet_ids            = local.subnet_ids
   monitoring_role_arn   = aws_iam_role.rds_monitoring.arn
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+module "db_ledger" {
+  source = "../../modules/rds-postgres"
+
