@@ -73,3 +73,22 @@ locals {
 
   parameters = merge(local.base_parameters, var.parameters)
 
+  # A parameter group change is only static-safe for some parameters; shared_preload_libraries
+  # needs a reboot. Marking it pending-reboot rather than immediate is what stops an apply
+  # from bouncing the ledger's database in the middle of a settlement window.
+  static_parameters = ["shared_preload_libraries", "max_connections"]
+}
+
+resource "aws_db_subnet_group" "this" {
+  name        = "${local.identifier}-subnets"
+  description = "Private subnets for ${var.service}'s Postgres instance in ${var.environment}"
+  subnet_ids  = var.subnet_ids
+
+  tags = merge(module.names.tags, {
+    Name = "${local.identifier}-subnets"
+  })
+}
+
+resource "aws_security_group" "this" {
+  name        = "${local.identifier}-sg"
+  description = "Postgres for ${var.service} (${var.environment})"
