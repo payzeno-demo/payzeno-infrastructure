@@ -57,3 +57,12 @@ module "db_ledger" {
 
   # DATABASE_POOL_SIZE = 20 (interfaces.md §7). Four tasks hold a full pool each, the sweep
   # and the drain each hold one on top of that, alembic takes two during a deploy, and there
+  # is usually a human in psql. 3x the pool is the floor, not the target — see
+  # interfaces.md §3.1 rule 4 and modules/rds-postgres/variables.tf.
+  client_pool_size = 20
+  max_connections  = 400
+
+  performance_insights_enabled        = true
+  performance_insights_retention_days = 731
+
+  # pg_stat_statements is in the module defaults. These two are ledger-specific: the
