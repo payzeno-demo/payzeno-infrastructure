@@ -43,10 +43,56 @@ variable "parameters" {
   default     = {}
 }
 
+variable "backup_retention_days" {
+  description = "Automated backup retention. Production keeps 14 minimum (precondition); staging keeps 1."
+  type        = number
+  default     = 7
+}
+
+variable "master_username" {
+  description = "Master user. The password is RDS-managed and terraform never holds it."
+  type        = string
+  default     = "payzeno"
+}
+
+variable "vpc_id" {
+  description = "VPC the instance and its security group live in."
+  type        = string
+}
+
 variable "allowed_security_group_ids" {
   description = "Security groups permitted inbound on 5432. In practice this is the owning service's task SG, and nothing else."
   type        = list(string)
   default     = []
+}
+
+variable "monitoring_role_arn" {
+  description = "Enhanced-monitoring role ARN. One per account, created outside this module."
+  type        = string
+  default     = null
+}
+
+variable "connections_alarm_fraction" {
+  description = "Fraction of max_connections at which db-connections-high fires. A fraction rather than a number so raising the pool cannot make the alarm unreachable."
+  type        = number
+  default     = 0.8
+
+  validation {
+    condition     = var.connections_alarm_fraction > 0 && var.connections_alarm_fraction < 1
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: connections_alarm_fraction is a fraction strictly between 0 and 1."
+  }
+}
+
+variable "alarm_actions" {
+  description = "SNS topics the two alarms notify. Empty in staging."
+  type        = list(string)
+  default     = []
+}
+
+variable "runbook_base_url" {
+  description = "Base URL for the runbook links on this module's alarms."
+  type        = string
+  default     = "https://github.com/payzeno/payzeno-infrastructure/blob/main/docs/runbooks"
 }
 
 variable "extra_tags" {
