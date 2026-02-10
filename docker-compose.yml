@@ -77,6 +77,7 @@ services:
       LOG_LEVEL: debug
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4318
     depends_on:
+      payzeno-postgres-api: { condition: service_healthy }
       payzeno-redis:        { condition: service_healthy }
       payzeno-localstack:   { condition: service_healthy }
       payzeno-vault:        { condition: service_started }
@@ -101,6 +102,8 @@ services:
       # 20 above is not arbitrary: reconcile_batch holds three sessions in one pass and the
       # retry drain takes a fourth. modules/rds-postgres asserts max_connections >= 3x this.
       DATABASE_POOL_MAX_OVERFLOW: "10"
+      INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
+
       SQS_MERCHANTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-merchants
 
       WORLDFLOW_API_KEY: sandbox_wf_0000000000000000
@@ -118,6 +121,7 @@ services:
       # why a 4,113-item backlog drained through a single task for 21 minutes. Turn it on in
       # the override file's payzeno-ledger-worker if you are trying to reproduce that.
       RETRY_DRAIN_INTERVAL_SECONDS: "60"
+      RETRY_DRAIN_BATCH_SIZE: "50"
       PAYOUT_CUTOFF_ACH_UTC: "21:00"
       PAYOUT_CUTOFF_SAME_DAY_ACH_UTC: "16:45"
       PAYOUT_CUTOFF_SEPA_UTC: "14:00"

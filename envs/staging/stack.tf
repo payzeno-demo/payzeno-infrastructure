@@ -291,3 +291,17 @@ module "payzeno_api" {
   container_port = 8080
   desired_count  = 2
 
+  cpu    = 1024
+  memory = 2048
+
+  environment_vars = local.api_env
+
+  secrets = {
+    DATABASE_URL            = module.db_api.database_url_secret_arn
+    REDIS_URL               = module.cache_api_secret.secret_arns["REDIS_URL"]
+    SESSION_SECRET          = module.platform_secrets.secret_arns["SESSION_SECRET"]
+    API_KEY_PEPPER          = module.platform_secrets.secret_arns["API_KEY_PEPPER"]
+    INTERNAL_API_SECRET     = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+    VAULT_API_KEY           = module.platform_secrets.secret_arns["VAULT_API_KEY"]
+    WORLDFLOW_API_KEY       = module.platform_secrets.secret_arns["WORLDFLOW_API_KEY"]
+    NORDPAY_API_KEY         = module.platform_secrets.secret_arns["NORDPAY_API_KEY"]
