@@ -83,3 +83,11 @@ module "db_ledger" {
   # the application had already started failing to check out connections. 0.75 gives the
   # on-call the ten minutes the old threshold did not.
   connections_alarm_fraction = 0.75
+  cpu_alarm_threshold        = 75
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+# The legacy biller's MySQL. Pre-convention module; see modules/rds-mysql/main.tf before you
+# touch anything here. It takes three inputs and hardcodes everything else, including some
