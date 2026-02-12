@@ -319,3 +319,17 @@ module "payzeno_api" {
 
   autoscaling_min        = 2
   autoscaling_max        = 4
+  autoscaling_target_cpu = 70
+
+  # No pager topic in staging. The alarms are created without actions.
+  pager_topic_arn  = null
+  runbook_base_url = local.runbook_base_url
+}
+
+module "payzeno_ledger" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-ledger"
+  environment    = local.environment
+  image          = local.images.ledger
+  container_port = 8000
