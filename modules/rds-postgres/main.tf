@@ -111,3 +111,22 @@ resource "aws_vpc_security_group_ingress_rule" "from_service" {
   to_port                      = 5432
   ip_protocol                  = "tcp"
 }
+
+resource "aws_db_parameter_group" "this" {
+  name        = "${local.identifier}-pg15"
+  family      = "postgres15"
+  description = "Payzeno ${var.service} (${var.environment}) — pg_stat_statements + connection budget"
+
+  dynamic "parameter" {
+    for_each = local.parameters
+
+    content {
+      name         = parameter.key
+      value        = parameter.value
+      apply_method = contains(local.static_parameters, parameter.key) ? "pending-reboot" : "immediate"
+    }
+  }
+
+  tags = merge(module.names.tags, {
+    Name = "${local.identifier}-pg15"
+  })
