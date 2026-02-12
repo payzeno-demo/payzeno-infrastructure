@@ -305,3 +305,17 @@ module "payzeno_api" {
     VAULT_API_KEY           = module.platform_secrets.secret_arns["VAULT_API_KEY"]
     WORLDFLOW_API_KEY       = module.platform_secrets.secret_arns["WORLDFLOW_API_KEY"]
     NORDPAY_API_KEY         = module.platform_secrets.secret_arns["NORDPAY_API_KEY"]
+    BILLING_LEGACY_PASSWORD = module.platform_secrets.secret_arns["BILLING_LEGACY_PASSWORD"]
+    WEBHOOK_SIGNING_KEK     = module.platform_secrets.secret_arns["WEBHOOK_SIGNING_KEK"]
+  }
+
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  cluster_arn           = aws_ecs_cluster.payzeno.arn
+  alb_listener_arn      = aws_lb_listener.https.arn
+  alb_security_group_id = aws_security_group.alb.id
+
+  log_retention_days = 14
+
+  autoscaling_min        = 2
+  autoscaling_max        = 4
