@@ -74,3 +74,12 @@ module "db_ledger" {
     lock_timeout                          = "60000"
   }
 
+  backup_retention_days = 35
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  monitoring_role_arn   = aws_iam_role.rds_monitoring.arn
+
+  # Retuned after PAY-2041. It was 0.9 of max_connections, which meant the alarm fired after
+  # the application had already started failing to check out connections. 0.75 gives the
+  # on-call the ten minutes the old threshold did not.
+  connections_alarm_fraction = 0.75
