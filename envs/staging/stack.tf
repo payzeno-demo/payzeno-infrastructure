@@ -333,3 +333,17 @@ module "payzeno_ledger" {
   environment    = local.environment
   image          = local.images.ledger
   container_port = 8000
+  desired_count  = 1
+
+  cpu    = 1024
+  memory = 4096
+
+  environment_vars = local.ledger_env
+
+  secrets = {
+    DATABASE_URL        = module.db_ledger.database_url_secret_arn
+    INTERNAL_API_SECRET = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+    WORLDFLOW_API_KEY   = module.platform_secrets.secret_arns["WORLDFLOW_API_KEY"]
+    NORDPAY_API_KEY     = module.platform_secrets.secret_arns["NORDPAY_API_KEY"]
+  }
+
