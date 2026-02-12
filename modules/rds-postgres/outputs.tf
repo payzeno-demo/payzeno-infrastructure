@@ -24,9 +24,34 @@ output "port" {
   value       = aws_db_instance.this.port
 }
 
+output "database_name" {
+  description = "Logical database name — payzeno_api or payzeno_ledger."
+  value       = aws_db_instance.this.db_name
+}
+
+output "identifier" {
+  description = "RDS instance identifier. This is the DBInstanceIdentifier dimension on every alarm and the string you paste into the console at 02:00."
+  value       = aws_db_instance.this.identifier
+}
+
+output "database_url_secret_arn" {
+  description = "Secrets Manager ARN holding the full DATABASE_URL. Wire this into the owning service's `secrets` map — never into environment_vars."
+  value       = module.credentials.secret_arns["DATABASE_URL"]
+}
+
 output "password_secret_arn" {
   description = "Secrets Manager ARN holding the master password on its own, for the rotation lambda and for psql sessions."
   value       = module.credentials.secret_arns["DATABASE_PASSWORD"]
+}
+
+output "master_user_secret_arn" {
+  description = "The RDS-managed master credential. Distinct from password_secret_arn: RDS owns this one and rotates it, we own the other and assemble the URL from it."
+  value       = try(aws_db_instance.this.master_user_secret[0].secret_arn, null)
+}
+
+output "kms_key_arn" {
+  description = "CMK encrypting both the storage and the credential secrets. The consuming task's execution role needs kms:Decrypt on it."
+  value       = module.credentials.kms_key_arn
 }
 
 output "security_group_id" {
@@ -37,6 +62,11 @@ output "security_group_id" {
 output "parameter_group_name" {
   description = "Parameter group carrying pg_stat_statements and the connection budget. Named in the runbook — a slow-query investigation starts by confirming the instance is actually on this group."
   value       = aws_db_parameter_group.this.name
+}
+
+output "max_connections" {
+  description = "The connection budget this instance was built with. Echoed so the env root can assert against the service's DATABASE_POOL_SIZE without re-deriving it."
+  value       = var.max_connections
 }
 
 output "connections_alarm_arn" {
