@@ -66,3 +66,28 @@ module "db_ledger" {
   performance_insights_retention_days = 731
 
   # pg_stat_statements is in the module defaults. These two are ledger-specific: the
+  # settlement import writes in large batches and the default work_mem spills the sort to
+  # disk, and a lock wait longer than a minute in the money path is a bug, not congestion.
+  parameters = {
+    work_mem                              = "32768"
+    "idle_in_transaction_session_timeout" = "30000"
+    lock_timeout                          = "60000"
+  }
+
+  backup_retention_days = 35
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  monitoring_role_arn   = aws_iam_role.rds_monitoring.arn
+
+  # Retuned after PAY-2041. It was 0.9 of max_connections, which meant the alarm fired after
+  # the application had already started failing to check out connections. 0.75 gives the
+  # on-call the ten minutes the old threshold did not.
+  connections_alarm_fraction = 0.75
+  cpu_alarm_threshold        = 75
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+# The legacy biller's MySQL. Pre-convention module; see modules/rds-mysql/main.tf before you
+# touch anything here. It takes three inputs and hardcodes everything else, including some

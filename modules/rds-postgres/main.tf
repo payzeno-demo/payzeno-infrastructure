@@ -92,3 +92,41 @@ resource "aws_db_subnet_group" "this" {
 resource "aws_security_group" "this" {
   name        = "${local.identifier}-sg"
   description = "Postgres for ${var.service} (${var.environment})"
+  vpc_id      = var.vpc_id
+
+  tags = merge(module.names.tags, {
+    Name = "${local.identifier}-sg"
+  })
+}
+
+# Only the owning service's tasks. Not the VPC CIDR, not the bastion by default — if you
+# need psql, assume the role and use the session-manager tunnel; the runbook has the command.
+resource "aws_vpc_security_group_ingress_rule" "from_service" {
+  for_each = toset(var.allowed_security_group_ids)
+
+  security_group_id            = aws_security_group.this.id
+  description                  = "Postgres from ${each.value}"
+  referenced_security_group_id = each.value
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_db_parameter_group" "this" {
+  name        = "${local.identifier}-pg15"
+  family      = "postgres15"
+  description = "Payzeno ${var.service} (${var.environment}) — pg_stat_statements + connection budget"
+
+  dynamic "parameter" {
+    for_each = local.parameters
+
+    content {
+      name         = parameter.key
+      value        = parameter.value
+      apply_method = contains(local.static_parameters, parameter.key) ? "pending-reboot" : "immediate"
+    }
+  }
+
+  tags = merge(module.names.tags, {
+    Name = "${local.identifier}-pg15"
+  })
