@@ -37,10 +37,28 @@ variable "allocated_storage" {
   default     = 100
 }
 
+variable "multi_az" {
+  description = "Multi-AZ failover. Forced true in production by a precondition in main.tf."
+  type        = bool
+  default     = false
+}
+
 variable "parameters" {
   description = "Extra Postgres parameters, merged over the module's defaults (which include pg_stat_statements and the connection budget). Caller wins."
   type        = map(string)
   default     = {}
+}
+
+variable "client_pool_size" {
+  description = "The DATABASE_POOL_SIZE the owning service is configured with. Passed in so the module can check the 3x rule against the real value rather than the contracted default."
+  type        = number
+  default     = 20
+}
+
+variable "performance_insights_enabled" {
+  description = "Performance Insights. On for the production ledger since PAY-1744; off in staging, where it costs money to answer a question nobody is asking."
+  type        = bool
+  default     = false
 }
 
 variable "backup_retention_days" {

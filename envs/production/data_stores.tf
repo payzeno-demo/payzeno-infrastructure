@@ -66,3 +66,11 @@ module "db_ledger" {
   performance_insights_retention_days = 731
 
   # pg_stat_statements is in the module defaults. These two are ledger-specific: the
+  # settlement import writes in large batches and the default work_mem spills the sort to
+  # disk, and a lock wait longer than a minute in the money path is a bug, not congestion.
+  parameters = {
+    work_mem                              = "32768"
+    "idle_in_transaction_session_timeout" = "30000"
+    lock_timeout                          = "60000"
+  }
+
