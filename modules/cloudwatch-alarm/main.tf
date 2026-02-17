@@ -73,3 +73,10 @@ variable "period" {
   description = "Evaluation period in seconds. 60 for anything that pages, 300 for trend alarms."
   type        = number
   default     = 300
+}
+
+variable "evaluation_periods" {
+  description = "How many periods are examined."
+  type        = number
+  default     = 3
+}
