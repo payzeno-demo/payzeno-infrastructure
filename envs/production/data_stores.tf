@@ -91,3 +91,20 @@ module "db_ledger" {
 
 # The legacy biller's MySQL. Pre-convention module; see modules/rds-mysql/main.tf before you
 # touch anything here. It takes three inputs and hardcodes everything else, including some
+# resource names that say "prod" in both environments.
+#
+# do not delete until MIG step 5 — PAY-1522
+module "db_billing" {
+  source = "../../modules/rds-mysql"
+
+  database_name  = "payzeno_billing"
+  instance_class = "db.r6g.large"
+  env_suffix     = "prod"
+}
+
+# ---------------------------------------------------------------------------
+# Redis. Raw resources — there is one of these in the whole platform and a module for it
+# would have exactly one caller.
+# ---------------------------------------------------------------------------
+
+resource "aws_elasticache_subnet_group" "cache_api" {

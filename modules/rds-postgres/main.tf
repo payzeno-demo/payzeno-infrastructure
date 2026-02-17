@@ -130,3 +130,40 @@ resource "aws_db_parameter_group" "this" {
   tags = merge(module.names.tags, {
     Name = "${local.identifier}-pg15"
   })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_db_instance" "this" {
+  identifier     = local.identifier
+  engine         = "postgres"
+  engine_version = var.engine_version
+  instance_class = var.instance_class
+
+  db_name  = var.database_name
+  username = var.master_username
+  # The password lives in Secrets Manager and terraform never sees it. manage_master_user_password
+  # hands the whole lifecycle to RDS; the DATABASE_URL secret this module creates is assembled
+  # by the rotation lambda from the RDS-managed credential.
+  manage_master_user_password = true
+
+  allocated_storage     = var.allocated_storage
+  max_allocated_storage = var.max_allocated_storage
+  storage_type          = "gp3"
+  storage_encrypted     = true
+  kms_key_id            = module.credentials.kms_key_arn
+
+  multi_az               = var.multi_az
+  db_subnet_group_name   = aws_db_subnet_group.this.name
+  vpc_security_group_ids = [aws_security_group.this.id]
+  parameter_group_name   = aws_db_parameter_group.this.name
+  publicly_accessible    = false
+
+  backup_retention_period = var.backup_retention_days
+  backup_window           = "02:15-03:15"
+  maintenance_window      = "sun:03:30-sun:04:30"
+  copy_tags_to_snapshot   = true
+
+  performance_insights_enabled          = var.performance_insights_enabled

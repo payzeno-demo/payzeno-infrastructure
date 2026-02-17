@@ -234,3 +234,27 @@ module "payzeno_ledger" {
 # backoff work (PAY-1691). Delete this once the drain is on everywhere.
 #
 # Added month 5 under PAY-1688. PAY-1691 was never scheduled. On the night of PAY-2041 this
+# comment was four months old, and this single task was the only thing in production with
+# RETRY_DRAIN_ENABLED=true — which is why a 4,113-item backlog took 21 minutes to drain
+# through one worker while three batch sweeps ran alongside it.
+#
+# Postmortem action item: delete this block. Not done yet; the drain is still not safe to
+# run everywhere until PAY-2059 lands the backoff and the breaker.
+module "payzeno_ledger_canary" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-ledger"
+  component      = "canary"
+  environment    = local.environment
+  image          = local.images.ledger
+  container_port = 8000
+  desired_count  = 1
+
+  cpu    = 2048
+  memory = 8192
+
+  environment_vars = merge(local.ledger_env, {
+    RETRY_DRAIN_ENABLED = "true"
+  })
+
+  secrets = local.ledger_secrets
