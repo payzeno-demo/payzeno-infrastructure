@@ -246,3 +246,9 @@ module "payzeno_ledger_canary" {
   service        = "payzeno-ledger"
   component      = "canary"
   environment    = local.environment
+  image          = local.images.ledger
+  container_port = 8000
+  desired_count  = 1
+
+  cpu    = 2048
+  memory = 8192
