@@ -252,3 +252,9 @@ module "payzeno_ledger_canary" {
 
   cpu    = 2048
   memory = 8192
+
+  environment_vars = merge(local.ledger_env, {
+    RETRY_DRAIN_ENABLED = "true"
+  })
+
+  secrets = local.ledger_secrets
