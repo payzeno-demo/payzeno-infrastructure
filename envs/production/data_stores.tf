@@ -100,3 +100,11 @@ module "db_billing" {
   database_name  = "payzeno_billing"
   instance_class = "db.r6g.large"
   env_suffix     = "prod"
+}
+
+# ---------------------------------------------------------------------------
+# Redis. Raw resources — there is one of these in the whole platform and a module for it
+# would have exactly one caller.
+# ---------------------------------------------------------------------------
+
+resource "aws_elasticache_subnet_group" "cache_api" {
