@@ -240,3 +240,9 @@ module "payzeno_ledger" {
 #
 # Postmortem action item: delete this block. Not done yet; the drain is still not safe to
 # run everywhere until PAY-2059 lands the backoff and the breaker.
+module "payzeno_ledger_canary" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-ledger"
+  component      = "canary"
+  environment    = local.environment
