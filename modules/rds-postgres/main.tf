@@ -130,3 +130,21 @@ resource "aws_db_parameter_group" "this" {
   tags = merge(module.names.tags, {
     Name = "${local.identifier}-pg15"
   })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_db_instance" "this" {
+  identifier     = local.identifier
+  engine         = "postgres"
+  engine_version = var.engine_version
+  instance_class = var.instance_class
+
+  db_name  = var.database_name
+  username = var.master_username
+  # The password lives in Secrets Manager and terraform never sees it. manage_master_user_password
+  # hands the whole lifecycle to RDS; the DATABASE_URL secret this module creates is assembled
+  # by the rotation lambda from the RDS-managed credential.
+  manage_master_user_password = true
