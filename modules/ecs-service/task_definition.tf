@@ -56,3 +56,17 @@ locals {
 
   module_secrets = length(module.task_secrets) > 0 ? module.task_secrets[0].task_secrets : []
 
+  container_secrets = concat(local.caller_secrets, local.module_secrets)
+
+  app_container = {
+    name      = var.service
+    image     = var.image
+    essential = true
+
+    portMappings = [{
+      containerPort = var.container_port
+      hostPort      = var.container_port
+      protocol      = "tcp"
+      name          = "app"
+    }]
+
