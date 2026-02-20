@@ -264,3 +264,9 @@ module "payzeno_ledger_canary" {
   cluster_arn = aws_ecs_cluster.payzeno.arn
 
   # No ALB. The canary exists to run the drain loop; nothing routes HTTP to it.
+  alb_listener_arn     = null
+  enable_nginx_sidecar = false
+
+  log_retention_days = 90
+
+  autoscaling_min        = 1
