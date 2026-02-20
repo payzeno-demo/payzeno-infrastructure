@@ -85,3 +85,18 @@ locals {
       startPeriod = 60
     }
 
+    # SIGTERM then 30s. The ledger's sweep checks a shutdown flag between items, so a clean
+    # stop finishes the item it is on and does not leave a reconciliation_item in `settling`.
+    stopTimeout = 30
+
+    ulimits = [{
+      name      = "nofile"
+      softLimit = 65536
+      hardLimit = 65536
+    }]
+
+    mountPoints = [
+      for v in var.efs_volumes : {
+        sourceVolume  = v.name
+        containerPath = v.root_directory
+        readOnly      = false
