@@ -361,3 +361,17 @@ module "payzeno_ledger" {
 
   pager_topic_arn  = null
   runbook_base_url = local.runbook_base_url
+}
+
+module "payzeno_billing_legacy" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-billing-legacy"
+  environment    = local.environment
+  image          = local.images.billing_legacy
+  container_port = 8090
+  desired_count  = 1
+
+  cpu    = 1024
+  memory = 2048
+
