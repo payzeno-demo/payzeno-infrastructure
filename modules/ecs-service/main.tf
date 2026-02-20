@@ -26,6 +26,21 @@ terraform {
   }
 }
 
+module "task_secrets" {
+  source = "../secrets"
+  count  = length(var.managed_secret_names) > 0 ? 1 : 0
+
+  service      = var.service
+  environment  = var.environment
+  purpose      = var.component == "" ? "task" : "task-${var.component}"
+  secret_names = var.managed_secret_names
+  # The acquirer keys are rotated by hand, with the acquirer on the phone, so a service
+  # that holds one gets manual rotation for all of them. Coarse, but the alternative is a
+  # per-secret rotation map and nobody has needed it.
+  rotation_days = anytrue([for n in var.managed_secret_names : endswith(n, "_API_KEY")]) ? 0 : 90
+  extra_tags    = var.extra_tags
+}
+
 resource "aws_security_group" "this" {
   name        = "${module.names.id}-sg"
   description = "Task ENIs for ${var.service} (${var.environment})"
@@ -51,6 +66,17 @@ resource "aws_vpc_security_group_ingress_rule" "internal_listener" {
   to_port           = 8081
   ip_protocol       = "tcp"
 }
+
+resource "aws_vpc_security_group_egress_rule" "all" {
+  security_group_id = aws_security_group.this.id
+  description       = "Acquirers, Secrets Manager, SNS/SQS, RDS"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
+
+# ---------------------------------------------------------------------------
+# Target group
+# ---------------------------------------------------------------------------
 
 resource "aws_lb_target_group" "this" {
   count = local.is_alb_fronted ? 1 : 0

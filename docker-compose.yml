@@ -146,10 +146,26 @@ services:
       PAYZENO_API_BASE_URL: http://payzeno-api:8080
 
       SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_PASSWORD: payzeno
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
       BILLING_INVOICE_PREFIX: LOCAL
       BILLING_DUNNING_ENABLED: "false"
+      payzeno-mysql-billing: { condition: service_healthy }
+    healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8090/healthz"] }
+
+  # -------------------------------------------------------------------------
+  # payzeno-console — React/Vite. The seven VITE_* names are BUILD-time (ADR 0002): changing
+  # one here does nothing until the image is rebuilt. In AWS this is not a container at all,
+  # it is module.payzeno_console (S3 + CloudFront) and the values come from SSM.
+  #
+  # nginx/payzeno-console.conf serves /srv/console; the override file mounts the built bundle
+  # there. Running this file alone gets you the console on its own port and a 404 from
+  # console.payzeno.com — that is the one thing the override is load-bearing for.
+  # -------------------------------------------------------------------------
+  payzeno-console:
+    build: { context: ../payzeno-console }
+    environment:
       VITE_PAYZENO_API_URL: http://localhost/v1
       VITE_ENVIRONMENT: local
       VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
@@ -161,6 +177,13 @@ services:
   payzeno-vault:
     image: payzeno/card-vault:2.3
     ports: ["8099:8099"]
+    environment:
+      VAULT_MODE: sandbox
+    healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8099/healthz"] }
+
+  payzeno-postgres-api:
+    image: postgres:15-alpine
+    ports: ["5432:5432"]
     environment:
       POSTGRES_USER: payzeno
       POSTGRES_DB: payzeno_api
