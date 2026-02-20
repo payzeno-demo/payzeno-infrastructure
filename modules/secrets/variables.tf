@@ -35,3 +35,12 @@ variable "secret_names" {
     ])
     error_message = "PAYZENO_INFRA_INVALID_INPUT: secret names are SCREAMING_SNAKE — they are injected verbatim as env var names and must match interfaces.md §7."
   }
+}
+
+variable "rotation_days" {
+  description = "Automatic rotation window. 0 disables rotation (the acquirer keys, which are rotated by hand with the acquirer on the phone)."
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = var.rotation_days == 0 || (var.rotation_days >= 30 && var.rotation_days <= 365)
