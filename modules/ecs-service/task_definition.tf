@@ -56,3 +56,47 @@ locals {
 
   module_secrets = length(module.task_secrets) > 0 ? module.task_secrets[0].task_secrets : []
 
+  container_secrets = concat(local.caller_secrets, local.module_secrets)
+
+  app_container = {
+    name      = var.service
+    image     = var.image
+    essential = true
+
+    portMappings = [{
+      containerPort = var.container_port
+      hostPort      = var.container_port
+      protocol      = "tcp"
+      name          = "app"
+    }]
+
+    environment = local.container_environment
+    secrets     = local.container_secrets
+
+    logConfiguration = local.log_configuration
+
+    # Same probe the ALB target group uses and the same one docker-compose uses. Three
+    # places, one path, and it is /healthz everywhere.
+    healthCheck = {
+      command     = ["CMD-SHELL", "curl -fsS http://localhost:${var.container_port}${var.health_check_path} || exit 1"]
+      interval    = 15
+      timeout     = 5
+      retries     = 3
+      startPeriod = 60
+    }
+
+    # SIGTERM then 30s. The ledger's sweep checks a shutdown flag between items, so a clean
+    # stop finishes the item it is on and does not leave a reconciliation_item in `settling`.
+    stopTimeout = 30
+
+    ulimits = [{
+      name      = "nofile"
+      softLimit = 65536
+      hardLimit = 65536
+    }]
+
+    mountPoints = [
+      for v in var.efs_volumes : {
+        sourceVolume  = v.name
+        containerPath = v.root_directory
+        readOnly      = false

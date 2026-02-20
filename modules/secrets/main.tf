@@ -73,6 +73,28 @@ resource "aws_secretsmanager_secret" "this" {
   })
 }
 
+# Placeholder so a fresh environment can boot before anyone has rotated anything in.
+# `ignore_changes` on secret_string is load-bearing: without it every apply after a human
+# rotation reverts the credential to a random string, which we did once, in staging, in
+# month 3, and which took an hour to work out.
+resource "random_password" "placeholder" {
+  for_each = local.secret_set
+
+  length  = 48
+  special = false
+}
+
+resource "aws_secretsmanager_secret_version" "placeholder" {
+  for_each = local.secret_set
+
+  secret_id     = aws_secretsmanager_secret.this[each.key].id
+  secret_string = random_password.placeholder[each.key].result
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
