@@ -51,6 +51,46 @@ things rather than a property of one. Examples:
 - `secrets`: KMS key rotation is enabled in production
 - `sqs-queue`: a DLQ exists for every queue with a redrive policy
 
+### `PAYZENO_INFRA_DRIFT` — `check { assert { ... } }`
+
+Things that are true today, that a future PR could quietly make untrue, and where failing
+the *plan* is too aggressive but a warning on every run is right. Only `envs/production/`
+carries these:
+
+- the `/internal/` deny rule's priority is lower than the `/v1/` forward's
+- every contracted queue has exactly one subscription — except
+  `payzeno-console-notifications`, which must have two
+- no two `ecs-service` instantiations share a `discovery_dns`
+
+Staging has no `check` blocks. Staging does not page anyone; a check that nobody reads is
+noise.
+
+**If you add a module, add at least one validation to it.** A module with no failure surface
+is a module that will be misused.
+
+---
+
+## 4. Module conventions
+
+- Everything composes down to `modules/naming`. Derive ids, DNS names, log group names and
+  tags from it. Do not write a resource name as a string literal.
+- Merge `module.names.tags` into every resource's tags. `Team`, `Repo`, `ManagedBy`,
+  `Service`, `Environment`, `Component` are how cost allocation works.
+- **Modules under 60 lines keep their `variable` and `output` blocks in `main.tf`. Larger
+  modules split them into `variables.tf` and `outputs.tf`.**
+- Every variable is typed and has a `description`. tflint enforces both.
+- A module's variable and output names are its interface. Renaming an output silently
+  breaks every caller's reference — grep the whole repo before you do it, and expect the
+  PR to be reviewed as a breaking change.
+
+Current state, honestly: `ecs-service`, `rds-postgres` and `sqs-queue` are split correctly.
+`naming`, `cloudwatch-alarm` and `sns-topic` are correctly inline. `nginx-sidecar`,
+`secrets`, `alb-listener-rule` and `static-site` are split when they did not need to be —
+harmless, not worth a churn PR. `rds-mysql` is inline when it should not be, along with
+everything else wrong with it; that one is a real ticket and has been for a while.
+
+---
+
 ## 6. Things that need a conversation first
 
 Open a ticket and talk to infra before you write the PR:
