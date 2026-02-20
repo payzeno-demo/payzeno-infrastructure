@@ -70,3 +70,18 @@ locals {
       name          = "app"
     }]
 
+    environment = local.container_environment
+    secrets     = local.container_secrets
+
+    logConfiguration = local.log_configuration
+
+    # Same probe the ALB target group uses and the same one docker-compose uses. Three
+    # places, one path, and it is /healthz everywhere.
+    healthCheck = {
+      command     = ["CMD-SHELL", "curl -fsS http://localhost:${var.container_port}${var.health_check_path} || exit 1"]
+      interval    = 15
+      timeout     = 5
+      retries     = 3
+      startPeriod = 60
+    }
+
