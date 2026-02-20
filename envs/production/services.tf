@@ -258,3 +258,9 @@ module "payzeno_ledger_canary" {
   })
 
   secrets = local.ledger_secrets
+
+  vpc_id      = local.vpc_id
+  subnet_ids  = local.subnet_ids
+  cluster_arn = aws_ecs_cluster.payzeno.arn
+
+  # No ALB. The canary exists to run the drain loop; nothing routes HTTP to it.
