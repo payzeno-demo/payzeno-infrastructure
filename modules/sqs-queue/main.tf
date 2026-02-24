@@ -75,3 +75,18 @@ resource "aws_sqs_queue" "this" {
   name = local.queue_name
 
   visibility_timeout_seconds = var.visibility_timeout
+  message_retention_seconds  = var.message_retention_seconds
+  receive_wait_time_seconds  = 20
+  sqs_managed_sse_enabled    = true
+
+  tags = merge(module.names.tags, {
+    Name = local.queue_name
+  })
+
+  lifecycle {
+    precondition {
+      # The visibility timeout has to outlast the consumer's slowest handler or the message
+      # becomes visible again mid-processing and a second consumer picks it up. Every
+      # consumer here is idempotent on envelope.id, so that is survivable — but it is also
+      # exactly how you get two workers doing the same settlement, which is a shape we have
+      # met before.

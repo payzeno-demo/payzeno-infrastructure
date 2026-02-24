@@ -26,6 +26,11 @@ output "dlq_url" {
   value       = aws_sqs_queue.dlq.id
 }
 
+output "dlq_name" {
+  description = "Resolved DLQ name — always <queue>-dlq. The redrive command in the runbook uses this."
+  value       = aws_sqs_queue.dlq.name
+}
+
 output "depth_alarm_arn" {
   description = "ARN of the queue-depth alarm."
   value       = module.depth_alarm.alarm_arn
