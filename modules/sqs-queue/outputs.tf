@@ -16,6 +16,16 @@ output "queue_url" {
   value       = aws_sqs_queue.this.id
 }
 
+output "queue_arn" {
+  description = "ARN of the queue. Needed by any topic subscription the caller creates itself — payzeno-console-notifications' second subscription uses this."
+  value       = aws_sqs_queue.this.arn
+}
+
+output "dlq_url" {
+  description = "HTTPS URL of the dead-letter queue. payzeno-api's DeadLetterConsumer reads the DLQ-monitor one as SQS_DLQ_URL."
+  value       = aws_sqs_queue.dlq.id
+}
+
 output "depth_alarm_arn" {
   description = "ARN of the queue-depth alarm."
   value       = module.depth_alarm.alarm_arn

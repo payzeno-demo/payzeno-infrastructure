@@ -59,3 +59,19 @@ locals {
 resource "aws_sqs_queue" "dlq" {
   name = local.dlq_name
 
+  # 14 days. A message that lands here is going to be looked at by a human, and the human
+  # may be on holiday. Retention shorter than the on-call rotation is retention that loses
+  # the evidence.
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+
+  tags = merge(module.names.tags, {
+    Name = local.dlq_name
+    Role = "dlq"
+  })
+}
+
+resource "aws_sqs_queue" "this" {
+  name = local.queue_name
+
+  visibility_timeout_seconds = var.visibility_timeout

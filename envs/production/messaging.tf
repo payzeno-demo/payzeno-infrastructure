@@ -46,6 +46,49 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+# Added the morning after PAY-2041. The alarm that would have caught the duplicate
+# settlements did not exist yet, but even the alarms that DID exist only went to PagerDuty,
+# and PagerDuty only pages one person. We found out about a 1,847-transaction duplicate from
+# a merchant's support email. Everything that pages now also lands in a room.
+resource "aws_sns_topic_subscription" "pager_slack_incidents" {
+  topic_arn = aws_sns_topic.payzeno_pager.arn
+  protocol  = "https"
+  endpoint  = "https://hooks.slack.com/services/${var.slack_incidents_webhook_path}"
+
+  endpoint_auto_confirms = true
+}
+
+module "q_ledger_payments" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-ledger-payments"
+  environment = local.environment
+  topic_arn   = module.topic_payments_events.topic_arn
+
+  # PaymentEventConsumer (payzeno-ledger). api-surface.md §14.
+  filter_policy = {
+    event_type = [
+      "payment.authorized",
+      "payment.captured",
+      "payment.canceled",
+      "refund.created",
+      "dispute.opened",
+      "dispute.closed",
+    ]
+  }
+
+  # This consumer does acquirer I/O inside the handler on the capture_at_settlement path.
+  # 60s was not enough and the redeliveries were doing real work twice.
+  visibility_timeout = 300
+  max_receive_count  = 5
+
+  age_alarm_threshold_seconds = 300
+  depth_alarm_threshold       = 2000
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
 module "q_ledger_merchants" {
   source = "../../modules/sqs-queue"
 
@@ -93,3 +136,52 @@ resource "aws_sns_topic_subscription" "api_webhooks_payments" {
   })
 }
 
+# THE DOUBLE-SUBSCRIBED QUEUE. Do not "tidy" this.
+#
+# NotificationRelayConsumer (payzeno-api) pushes to NotificationsGateway, which fans out over
+# the /ws/notifications WebSocket to the console. It needs payout.failed and
+# settlement.completed (ledger topic) AND dispute.opened (payments topic). One queue, one
+# consumer, two topics, two filter policies. events.ts's header table says so explicitly and
+# api-surface.md §14 says so again.
+#
+# The module creates the ledger subscription; the payments one is the raw resource below.
+module "q_console_notifications" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-console-notifications"
+  environment = local.environment
+  topic_arn   = module.topic_ledger_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "payout.failed",
+      "settlement.completed",
+    ]
+  }
+
+  additional_topic_arns = [module.topic_payments_events.topic_arn]
+
+  # A notification nobody is connected to receive is not worth redelivering for four days.
+  message_retention_seconds   = 86400
+  visibility_timeout          = 30
+  max_receive_count           = 3
+  age_alarm_threshold_seconds = 180
+  depth_alarm_threshold       = 500
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+check "console_notifications_has_two_subscriptions" {
+  assert {
+    condition = alltrue([
+      for name, arn in local.double_subscription_queues : arn != null
+    ]) && module.q_console_notifications.subscription_arn != null && module.q_api_webhooks.subscription_arn != null
+    error_message = "PAYZENO_INFRA_DRIFT: payzeno-console-notifications and payzeno-api-webhooks each need TWO topic subscriptions (payments + ledger). Losing the payments one silently stops dispute.opened reaching the console and stops payment.failed reaching merchant webhooks. It is the easiest thing in this file to delete while tidying."
+  }
+}
+
+output "pager_topic_arn" {
+  description = "The alarm destination. Every module's alarm_actions points here."
+  value       = aws_sns_topic.payzeno_pager.arn
+}
