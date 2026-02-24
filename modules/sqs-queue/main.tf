@@ -106,3 +106,18 @@ resource "aws_sqs_queue" "this" {
 # allow-policy of its own.
 resource "aws_sqs_queue_redrive_policy" "this" {
   queue_url = aws_sqs_queue.this.id
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.dlq.arn
+    maxReceiveCount     = var.max_receive_count
+  })
+
+  lifecycle {
+    precondition {
+      condition     = aws_sqs_queue.dlq.arn != ""
+      error_message = "PAYZENO_INFRA_PRECONDITION: a redrive policy needs a DLQ. Without one, maxReceiveCount deletes the message instead of parking it."
+    }
+  }
+}
+
+resource "aws_sqs_queue_redrive_allow_policy" "dlq" {

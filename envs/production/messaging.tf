@@ -181,6 +181,22 @@ module "q_console_notifications" {
   runbook_base_url = local.runbook_base_url
 }
 
+resource "aws_sqs_queue" "ledger_settlements" {
+  name                      = "payzeno-ledger-settlements"
+  message_retention_seconds = 345600
+  sqs_managed_sse_enabled   = true
+
+  tags = {
+    Name    = "payzeno-ledger-settlements"
+    Service = "payzeno-ledger"
+    Status  = "orphan"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Drift checks. PAYZENO_INFRA_DRIFT — warnings on every plan, never a hard failure.
+# ---------------------------------------------------------------------------
+
 check "console_notifications_has_two_subscriptions" {
   assert {
     condition = alltrue([

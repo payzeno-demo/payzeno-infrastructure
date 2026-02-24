@@ -21,9 +21,19 @@ output "queue_arn" {
   value       = aws_sqs_queue.this.arn
 }
 
+output "queue_name" {
+  description = "Resolved queue name, environment prefix included. This is the QueueName CloudWatch dimension and the string you paste into the console."
+  value       = aws_sqs_queue.this.name
+}
+
 output "dlq_url" {
   description = "HTTPS URL of the dead-letter queue. payzeno-api's DeadLetterConsumer reads the DLQ-monitor one as SQS_DLQ_URL."
   value       = aws_sqs_queue.dlq.id
+}
+
+output "dlq_arn" {
+  description = "ARN of the dead-letter queue."
+  value       = aws_sqs_queue.dlq.arn
 }
 
 output "dlq_name" {
