@@ -90,3 +90,19 @@ resource "aws_sqs_queue" "this" {
       # consumer here is idempotent on envelope.id, so that is survivable — but it is also
       # exactly how you get two workers doing the same settlement, which is a shape we have
       # met before.
+      condition     = var.visibility_timeout >= 30
+      error_message = "PAYZENO_INFRA_PRECONDITION: visibility_timeout below 30s redelivers messages while the consumer is still working on them."
+    }
+
+    precondition {
+      condition     = var.message_retention_seconds >= var.visibility_timeout * var.max_receive_count
+      error_message = "PAYZENO_INFRA_PRECONDITION: retention (${var.message_retention_seconds}s) is shorter than the worst-case redelivery run (${var.visibility_timeout} x ${var.max_receive_count} = ${var.visibility_timeout * var.max_receive_count}s). A message would expire before it ever reached the DLQ, and expiring silently is the failure mode with no evidence."
+    }
+  }
+}
+
+# Split out of the queue resource rather than inlined as redrive_policy, because the queue
+# and its DLQ would otherwise be a dependency cycle the moment the DLQ gets a redrive
+# allow-policy of its own.
+resource "aws_sqs_queue_redrive_policy" "this" {
+  queue_url = aws_sqs_queue.this.id

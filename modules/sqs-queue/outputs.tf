@@ -31,6 +31,16 @@ output "dlq_name" {
   value       = aws_sqs_queue.dlq.name
 }
 
+output "subscribed_event_types" {
+  description = "The event types this queue's filter policy admits. Exposed so envs/*/messaging.tf can assert the union across all queues against EVENT_TYPES and prove which three are deliberately unconsumed."
+  value       = local.filter_event_types
+}
+
+output "age_alarm_arn" {
+  description = "ARN of the oldest-message-age alarm."
+  value       = module.age_alarm.alarm_arn
+}
+
 output "depth_alarm_arn" {
   description = "ARN of the queue-depth alarm."
   value       = module.depth_alarm.alarm_arn

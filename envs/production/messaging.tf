@@ -46,6 +46,15 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+resource "aws_sns_topic" "payzeno_pager" {
+  name = "payzeno-production-pager"
+
+  tags = {
+    Name = "payzeno-production-pager"
+    Role = "alarm-destination"
+  }
+}
+
 # Added the morning after PAY-2041. The alarm that would have caught the duplicate
 # settlements did not exist yet, but even the alarms that DID exist only went to PagerDuty,
 # and PagerDuty only pages one person. We found out about a 1,847-transaction duplicate from
