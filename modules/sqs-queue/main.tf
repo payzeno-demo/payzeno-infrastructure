@@ -59,3 +59,65 @@ locals {
 resource "aws_sqs_queue" "dlq" {
   name = local.dlq_name
 
+  # 14 days. A message that lands here is going to be looked at by a human, and the human
+  # may be on holiday. Retention shorter than the on-call rotation is retention that loses
+  # the evidence.
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+
+  tags = merge(module.names.tags, {
+    Name = local.dlq_name
+    Role = "dlq"
+  })
+}
+
+resource "aws_sqs_queue" "this" {
+  name = local.queue_name
+
+  visibility_timeout_seconds = var.visibility_timeout
+  message_retention_seconds  = var.message_retention_seconds
+  receive_wait_time_seconds  = 20
+  sqs_managed_sse_enabled    = true
+
+  tags = merge(module.names.tags, {
+    Name = local.queue_name
+  })
+
+  lifecycle {
+    precondition {
+      # The visibility timeout has to outlast the consumer's slowest handler or the message
+      # becomes visible again mid-processing and a second consumer picks it up. Every
+      # consumer here is idempotent on envelope.id, so that is survivable — but it is also
+      # exactly how you get two workers doing the same settlement, which is a shape we have
+      # met before.
+      condition     = var.visibility_timeout >= 30
+      error_message = "PAYZENO_INFRA_PRECONDITION: visibility_timeout below 30s redelivers messages while the consumer is still working on them."
+    }
+
+    precondition {
+      condition     = var.message_retention_seconds >= var.visibility_timeout * var.max_receive_count
+      error_message = "PAYZENO_INFRA_PRECONDITION: retention (${var.message_retention_seconds}s) is shorter than the worst-case redelivery run (${var.visibility_timeout} x ${var.max_receive_count} = ${var.visibility_timeout * var.max_receive_count}s). A message would expire before it ever reached the DLQ, and expiring silently is the failure mode with no evidence."
+    }
+  }
+}
+
+# Split out of the queue resource rather than inlined as redrive_policy, because the queue
+# and its DLQ would otherwise be a dependency cycle the moment the DLQ gets a redrive
+# allow-policy of its own.
+resource "aws_sqs_queue_redrive_policy" "this" {
+  queue_url = aws_sqs_queue.this.id
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.dlq.arn
+    maxReceiveCount     = var.max_receive_count
+  })
+
+  lifecycle {
+    precondition {
+      condition     = aws_sqs_queue.dlq.arn != ""
+      error_message = "PAYZENO_INFRA_PRECONDITION: a redrive policy needs a DLQ. Without one, maxReceiveCount deletes the message instead of parking it."
+    }
+  }
+}
+
+resource "aws_sqs_queue_redrive_allow_policy" "dlq" {
