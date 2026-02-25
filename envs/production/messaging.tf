@@ -181,6 +181,27 @@ module "q_console_notifications" {
   runbook_base_url = local.runbook_base_url
 }
 
+module "q_api_billing" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-api-billing"
+  environment = local.environment
+  topic_arn   = module.topic_billing_events.topic_arn
+
+  # InvoiceProjectionConsumer (payzeno-api) — refreshes invoice_projection. Created month 6
+  # alongside module.topic_billing_events, arc MIG.
+  filter_policy = {
+    event_type = ["invoice.issued"]
+  }
+
+  visibility_timeout          = 60
+  age_alarm_threshold_seconds = 900
+  depth_alarm_threshold       = 500
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
 resource "aws_sqs_queue" "ledger_settlements" {
   name                      = "payzeno-ledger-settlements"
   message_retention_seconds = 345600
