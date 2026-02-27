@@ -26,6 +26,15 @@ terraform {
   }
 }
 
+module "names" {
+  source = "../naming"
+
+  service     = var.service
+  environment = var.environment
+  component   = var.component
+  extra_tags  = var.extra_tags
+}
+
 module "task_secrets" {
   source = "../secrets"
   count  = length(var.managed_secret_names) > 0 ? 1 : 0
@@ -53,6 +62,19 @@ resource "aws_security_group" "this" {
   lifecycle {
     create_before_destroy = true
   }
+}
+
+# Only the ALB may reach the application port. Service-to-service traffic goes through the
+# internal nginx listener on 8081, which is a separate rule below.
+resource "aws_vpc_security_group_ingress_rule" "from_alb" {
+  count = local.is_alb_fronted && var.alb_security_group_id != null ? 1 : 0
+
+  security_group_id            = aws_security_group.this.id
+  description                  = "ALB to ${var.service}:${var.container_port}"
+  referenced_security_group_id = var.alb_security_group_id
+  from_port                    = var.container_port
+  to_port                      = var.container_port
+  ip_protocol                  = "tcp"
 }
 
 # The internal plane. 10/8 only — the same CIDR nginx/payzeno-internal.conf allows.

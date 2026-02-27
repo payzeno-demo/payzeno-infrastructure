@@ -100,3 +100,17 @@ locals {
         sourceVolume  = v.name
         containerPath = v.root_directory
         readOnly      = false
+      }
+    ]
+  }
+
+  sidecar_container = length(module.sidecar) > 0 ? [module.sidecar[0].container_definition] : []
+
+  container_definitions = concat([local.app_container], local.sidecar_container)
+}
+
+data "aws_region" "current" {}
+
+resource "aws_ecs_task_definition" "this" {
+  family                   = module.names.id
+  requires_compatibilities = ["FARGATE"]
