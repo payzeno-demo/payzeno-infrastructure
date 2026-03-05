@@ -41,6 +41,14 @@ make lock ENV=production   # darwin_arm64 + linux_amd64 + linux_arm64
 
 ---
 
+## 3. Failure surface — say it out loud, in one of three tiers
+
+Terraform has no exceptions, so the equivalent question — *how does this fail, and does it
+fail loudly?* — has to be answered on purpose. A module where nothing can fail is not a
+simple module, it is an untested one.
+
+Three tiers. Each has a greppable message prefix. Use the right one.
+
 ### `PAYZENO_INFRA_PRECONDITION` — `lifecycle { precondition { ... } }`
 
 Invariants that depend on resolved values, not just inputs — a relationship between two
