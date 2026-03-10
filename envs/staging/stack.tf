@@ -375,3 +375,17 @@ module "payzeno_billing_legacy" {
   cpu    = 1024
   memory = 2048
 
+  environment_vars = {
+    SPRING_PROFILES_ACTIVE     = "staging"
+    SPRING_DATASOURCE_URL      = module.db_billing.jdbc_url
+    SPRING_DATASOURCE_USERNAME = "payzeno_billing"
+
+    PAYZENO_LEDGER_BASE_URL = "http://payzeno-ledger.staging.payzeno.internal:8000"
+    PAYZENO_API_BASE_URL    = "http://payzeno-api.staging.payzeno.internal:8080"
+
+    BILLING_INVOICE_PREFIX        = "PZS"
+    BILLING_DUNNING_ENABLED       = "false"
+    BILLING_LEDGER_EXPORT_ENABLED = "true"
+
+    BILLING_FLAG_LEDGER_OWNS_INVOICES = "false"
+    BILLING_FLAG_LEDGER_OWNS_FEES     = "true"
