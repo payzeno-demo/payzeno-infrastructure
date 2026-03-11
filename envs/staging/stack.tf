@@ -375,3 +375,31 @@ module "payzeno_billing_legacy" {
   cpu    = 1024
   memory = 2048
 
+  environment_vars = {
+    SPRING_PROFILES_ACTIVE     = "staging"
+    SPRING_DATASOURCE_URL      = module.db_billing.jdbc_url
+    SPRING_DATASOURCE_USERNAME = "payzeno_billing"
+
+    PAYZENO_LEDGER_BASE_URL = "http://payzeno-ledger.staging.payzeno.internal:8000"
+    PAYZENO_API_BASE_URL    = "http://payzeno-api.staging.payzeno.internal:8080"
+
+    BILLING_INVOICE_PREFIX        = "PZS"
+    BILLING_DUNNING_ENABLED       = "false"
+    BILLING_LEDGER_EXPORT_ENABLED = "true"
+
+    BILLING_FLAG_LEDGER_OWNS_INVOICES = "false"
+    BILLING_FLAG_LEDGER_OWNS_FEES     = "true"
+
+    LOG_LEVEL                   = "debug"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.staging.payzeno.internal:4318"
+    AWS_REGION                  = local.region
+  }
+
+  secrets = {
+    SPRING_DATASOURCE_PASSWORD = module.db_billing.master_user_secret_arn
+    PAYZENO_INTERNAL_SECRET    = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+  }
+
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  cluster_arn           = aws_ecs_cluster.payzeno.arn
