@@ -389,3 +389,17 @@ module "payzeno_billing_legacy" {
 
     BILLING_FLAG_LEDGER_OWNS_INVOICES = "false"
     BILLING_FLAG_LEDGER_OWNS_FEES     = "true"
+
+    LOG_LEVEL                   = "debug"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.staging.payzeno.internal:4318"
+    AWS_REGION                  = local.region
+  }
+
+  secrets = {
+    SPRING_DATASOURCE_PASSWORD = module.db_billing.master_user_secret_arn
+    PAYZENO_INTERNAL_SECRET    = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+  }
+
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  cluster_arn           = aws_ecs_cluster.payzeno.arn
