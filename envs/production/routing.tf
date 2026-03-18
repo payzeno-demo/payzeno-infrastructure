@@ -152,6 +152,22 @@ resource "aws_lb_listener" "https" {
 # Rules, in evaluation order.
 # ---------------------------------------------------------------------------
 
+# p10 — the internal surface is never reachable from the public listener.
+# 404, not 403: a 403 on /internal/v1/merchants/mrc_123 confirms mrc_123 exists.
+# Mirrors nginx/payzeno-api.conf's `location ~ ^/internal/`.
+module "rule_api_internal_deny" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "internal-deny"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  path_patterns = ["/internal/*", "/internal"]
+  action        = "deny"
+}
+
 # p90 — before /v1/*, because /ws/notifications needs stickiness and the generic forward
 # does not set it. Long-lived connection; see the ALB idle timeout note above.
 module "rule_ws_notifications" {
@@ -189,6 +205,55 @@ module "rule_api_v1" {
   target_group_arn = module.payzeno_api.target_group_arn
 }
 
+# p500 — the console failover path.
+#
+# console.payzeno.com's DNS points at the CloudFront distribution below, so in normal
+# operation this rule matches nothing. It exists because "the distribution is broken" and
+# "we cannot serve the merchant console" should not be the same sentence: repoint the record
+# at the ALB and payzeno-api serves the built bundle from its static mount until the
+# distribution is back. It has been used once, for eleven minutes, in month 4.
+module "rule_console_spa" {
+  source = "../../modules/alb-listener-rule"
+
+  service      = "payzeno-api"
+  environment  = local.environment
+  name         = "console-spa"
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 500
+
+  path_patterns    = ["/*"]
+  host_headers     = [local.console_domain]
+  action           = "forward"
+  target_group_arn = module.payzeno_api.target_group_arn
+}
+
+# Reverted — the ledger is never publicly routed. See PAY-1355 and dhotfix's comment on #58.
+# Keeping this here so nobody proposes it a third time.
+#
+# The argument each time is the same: the console wants settlement detail and going through
+# payzeno-api adds a hop. The answer each time is that /internal/v1/* on the ledger has no
+# authentication of its own — it trusts INTERNAL_API_SECRET and the network — so a public
+# route to it is a public route to every merchant's ledger.
+#
+# module "rule_ledger_public" {
+#   source = "../../modules/alb-listener-rule"
+#
+#   service      = "payzeno-ledger"
+#   environment  = local.environment
+#   name         = "ledger-public"
+#   listener_arn = aws_lb_listener.https.arn
+#   priority     = 200
+#
+#   path_patterns    = ["/v1/settlements/*"]
+#   host_headers     = [local.api_domain]
+#   action           = "forward"
+#   target_group_arn = module.payzeno_ledger.target_group_arn
+# }
+
+# ---------------------------------------------------------------------------
+# The console. S3 + CloudFront, not an ECS service.
+# ---------------------------------------------------------------------------
+
 module "payzeno_console" {
   source = "../../modules/static-site"
 
@@ -203,6 +268,27 @@ module "payzeno_console" {
   vault_public_origin = local.vault_public_origin
 
   price_class = "PriceClass_100"
+}
+
+# Console build-time configuration. The console is a static bundle, so these are not runtime
+# env vars — the console's CI reads them out of SSM at build time and Vite bakes them in.
+# The NAMES are interfaces.md §7's console list and must match src/config/env.ts exactly.
+#
+# Changing one of these does nothing until the console is rebuilt and redeployed. That has
+# confused someone at least twice, hence this comment and hence the Rebuild tag.
+locals {
+  console_build_args = {
+    VITE_PAYZENO_API_URL             = "${local.api_origin}/v1"
+    VITE_WS_URL                      = "wss://${local.api_domain}/ws/notifications"
+    VITE_VAULT_PUBLIC_URL            = local.vault_public_origin
+    VITE_ENVIRONMENT                 = "production"
+    VITE_SENTRY_DSN                  = "https://c41e9f2a8b7d4c1e@o412.ingest.sentry.io/5501"
+    VITE_FEATURE_SETTLEMENT_EXPLORER = "true"
+
+    # Still false in production. Staging turned it on in month 11 (ystackoverflow, three
+    # rounds of review about why the two differ) and it has not been promoted.
+    VITE_FEATURE_DISPUTE_EVIDENCE_V2 = "false"
+  }
 }
 
 resource "aws_ssm_parameter" "console_build_args" {
@@ -237,6 +323,11 @@ check "console_spa_rule_is_last" {
     condition     = module.rule_console_spa.priority > module.rule_api_v1.priority
     error_message = "PAYZENO_INFRA_DRIFT: the console catch-all (/*) must be the highest-numbered rule on the listener. Ahead of /v1/* it swallows the entire platform API."
   }
+}
+
+output "alb_dns_name" {
+  description = "ALB hostname. api.payzeno.com is an alias for this."
+  value       = aws_lb.public.dns_name
 }
 
 output "console_distribution_id" {
