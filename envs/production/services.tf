@@ -276,3 +276,9 @@ module "payzeno_ledger_canary" {
   pager_topic_arn  = aws_sns_topic.payzeno_pager.arn
   runbook_base_url = local.runbook_base_url
 }
+
+# ---------------------------------------------------------------------------
+# payzeno-billing-legacy
+# ---------------------------------------------------------------------------
+
+module "payzeno_billing_legacy" {
