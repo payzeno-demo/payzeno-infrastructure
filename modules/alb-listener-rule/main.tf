@@ -126,3 +126,15 @@ resource "aws_lb_listener_rule" "this" {
 }
 
 # Outputs stayed in main.tf when variables.tf was split out. See CONTRIBUTING.md §4 for
+# what the convention actually says; this module is on the wrong side of it and it is not
+# worth a churn PR.
+
+output "rule_arn" {
+  description = "ARN of the listener rule."
+  value       = aws_lb_listener_rule.this.arn
+}
+
+output "priority" {
+  description = "Echo of the resolved priority. envs/production/routing.tf's drift check compares two of these."
+  value       = aws_lb_listener_rule.this.priority
+}

@@ -43,9 +43,25 @@ variable "host_headers" {
   default     = []
 }
 
+variable "action" {
+  description = "forward | deny. deny returns a fixed 404 — never a 403, which confirms the path exists."
+  type        = string
+  default     = "forward"
+
+  validation {
+    condition     = contains(["forward", "deny"], var.action)
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: action must be forward or deny."
+  }
+}
+
 variable "stickiness_duration" {
   description = "Target-group stickiness in seconds for this rule. 0 disables it. Only the WebSocket rule uses it."
   type        = number
   default     = 0
 }
 
+variable "extra_tags" {
+  description = "Merged under the standard tag set."
+  type        = map(string)
+  default     = {}
+}
