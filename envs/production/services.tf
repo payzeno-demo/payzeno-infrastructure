@@ -276,3 +276,15 @@ module "payzeno_ledger_canary" {
   pager_topic_arn  = aws_sns_topic.payzeno_pager.arn
   runbook_base_url = local.runbook_base_url
 }
+
+# ---------------------------------------------------------------------------
+# payzeno-billing-legacy
+# ---------------------------------------------------------------------------
+
+module "payzeno_billing_legacy" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-billing-legacy"
+  environment    = local.environment
+  image          = local.images.billing_legacy
+  container_port = 8090
