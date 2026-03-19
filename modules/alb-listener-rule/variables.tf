@@ -69,6 +69,12 @@ variable "action" {
   }
 }
 
+variable "target_group_arn" {
+  description = "Target group for a forward action. Must be null for a deny."
+  type        = string
+  default     = null
+}
+
 variable "stickiness_duration" {
   description = "Target-group stickiness in seconds for this rule. 0 disables it. Only the WebSocket rule uses it."
   type        = number
