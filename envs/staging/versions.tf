@@ -12,3 +12,18 @@ terraform {
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.2"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "payzeno-tfstate"
+    key            = "staging/terraform.tfstate"
+    region         = "eu-west-1"
+    dynamodb_table = "payzeno-tfstate-locks"
+    encrypt        = true
+  }
+}
