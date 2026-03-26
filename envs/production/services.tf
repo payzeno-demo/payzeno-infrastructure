@@ -288,3 +288,9 @@ module "payzeno_billing_legacy" {
   environment    = local.environment
   image          = local.images.billing_legacy
   container_port = 8090
+  desired_count  = 2
+
+  cpu    = 1024
+  memory = 4096
+
+  environment_vars = {
