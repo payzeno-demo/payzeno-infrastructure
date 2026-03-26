@@ -105,3 +105,26 @@ until PAY-2059 lands the backoff and the breaker.
 
 ---
 
+## secrets and rotation
+
+A task that will not start with no application logs at all is usually a secret it cannot
+read. The failure is in the ECS event stream.
+
+```bash
+aws ecs describe-tasks --cluster $CLUSTER --tasks <arn> \
+  --query 'tasks[0].stoppedReason'
+```
+
+`ResourceInitializationError: unable to pull secrets` means the execution role has lost
+`secretsmanager:GetSecretValue` or `kms:Decrypt` on the CMK. Both are granted by named ARN in
+`modules/ecs-service/iam.tf` — if a secret was recreated it has a new ARN and the apply that
+created it is the one that fixed or broke this.
+
+**`WEBHOOK_SIGNING_KEK` is not a normal secret.** It is the envelope key wrapping every
+`webhook_endpoint.secret_ciphertext` row in `payzeno_api`. Rotating it re-wraps every
+merchant's webhook secret and is a migration with a maintenance window, not a rotation.
+`enable_key_rotation` is deliberately `false` on `aws_kms_key.webhook_signing`. Do not turn
+it on at 02:00. PAY-1699.
+
+---
+
