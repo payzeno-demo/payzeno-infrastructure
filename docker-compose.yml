@@ -107,6 +107,7 @@ services:
       DATABASE_POOL_MAX_OVERFLOW: "10"
       INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
 
+      SQS_PAYMENTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-payments
       SQS_MERCHANTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-merchants
 
       WORLDFLOW_API_KEY: sandbox_wf_0000000000000000
@@ -125,6 +126,8 @@ services:
       # the override file's payzeno-ledger-worker if you are trying to reproduce that.
       RETRY_DRAIN_INTERVAL_SECONDS: "60"
       RETRY_DRAIN_BATCH_SIZE: "50"
+      RETRY_DRAIN_ENABLED: "false"
+
       PAYOUT_CUTOFF_ACH_UTC: "21:00"
       PAYOUT_CUTOFF_SAME_DAY_ACH_UTC: "16:45"
       PAYOUT_CUTOFF_SEPA_UTC: "14:00"
@@ -213,6 +216,7 @@ services:
       MYSQL_USER: payzeno
       MYSQL_PASSWORD: payzeno
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-upayzeno", "-ppayzeno"]
+      interval: 5s
       retries: 30
 
   payzeno-redis:
