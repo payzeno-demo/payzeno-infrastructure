@@ -403,3 +403,17 @@ module "payzeno_billing_legacy" {
   vpc_id                = local.vpc_id
   subnet_ids            = local.subnet_ids
   cluster_arn           = aws_ecs_cluster.payzeno.arn
+  alb_listener_arn      = aws_lb_listener.https.arn
+  alb_security_group_id = aws_security_group.alb.id
+
+  log_retention_days = 14
+
+  autoscaling_min        = 1
+  autoscaling_max        = 2
+  autoscaling_target_cpu = 75
+
+  pager_topic_arn  = null
+  runbook_base_url = local.runbook_base_url
+}
+
+module "payzeno_vault" {
