@@ -53,8 +53,11 @@ services:
       BILLING_LEGACY_BASE_URL: http://payzeno-billing-legacy:8090
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
+      BILLING_LEGACY_USER: payzeno-api
       BILLING_LEGACY_PASSWORD: dev-legacy-password
       NORDPAY_API_KEY: dev-nordpay-key
+      PROCESSOR_DEFAULT_ACQUIRER: worldflow
+
       API_KEY_PEPPER: dev-api-key-pepper
       AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
@@ -127,6 +130,7 @@ services:
       PAYOUT_CUTOFF_SEPA_UTC: "14:00"
       PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
 
+      SETTLEMENT_IMPORT_ENABLED: "true"
       LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:

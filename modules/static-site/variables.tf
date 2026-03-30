@@ -21,6 +21,16 @@ variable "environment" {
   type        = string
 }
 
+variable "domain_name" {
+  description = "Hostname served by the distribution — console.payzeno.com or console.staging.payzeno.com."
+  type        = string
+
+  validation {
+    condition     = endswith(var.domain_name, ".payzeno.com")
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: domain_name must be under payzeno.com. The ACM certificate is a payzeno.com wildcard and a name outside it produces a distribution that serves a certificate error, which CloudFront will happily create."
+  }
+}
+
 variable "acm_certificate_arn" {
   description = "ACM certificate for domain_name. Must be in us-east-1 — CloudFront reads certificates from there and only there, regardless of where anything else lives."
   type        = string
@@ -28,6 +38,22 @@ variable "acm_certificate_arn" {
   validation {
     condition     = can(regex("^arn:aws:acm:us-east-1:", var.acm_certificate_arn))
     error_message = "PAYZENO_INFRA_INVALID_INPUT: CloudFront certificates live in us-east-1. An eu-west-1 ARN here fails at apply with a message that does not say why."
+  }
+}
+
+variable "spa_fallback" {
+  description = "Map 403/404 to /index.html with a 200 so client-side routes deep-link. True for the console; the only reason it is a variable is that a docs bucket would want it false."
+  type        = bool
+  default     = true
+}
+
+variable "api_origin" {
+  description = "Origin the bundle calls for the REST API and the WebSocket, e.g. https://api.payzeno.com. Goes into the CSP connect-src. Must match what VITE_PAYZENO_API_URL was built with."
+  type        = string
+
+  validation {
+    condition     = startswith(var.api_origin, "https://")
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: api_origin must be an https:// origin. A scheme-relative or http value in the CSP blocks every request the console makes."
   }
 }
 
@@ -52,3 +78,8 @@ variable "price_class" {
   }
 }
 
+variable "extra_tags" {
+  description = "Merged under the standard tag set."
+  type        = map(string)
+  default     = {}
+}
