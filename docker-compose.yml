@@ -115,6 +115,8 @@ services:
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       NORDPAY_BREAKER_THRESHOLD_PCT: "50"
       NORDPAY_BREAKER_WINDOW: "100"
+      NORDPAY_BREAKER_RESET_SECONDS: "30"
+
       RECONCILE_SWEEP_INTERVAL_SECONDS: "900"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
@@ -174,6 +176,7 @@ services:
     build: { context: ../payzeno-console }
     environment:
       VITE_PAYZENO_API_URL: http://localhost/v1
+      VITE_WS_URL: ws://localhost/ws/notifications
       VITE_ENVIRONMENT: local
       VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
     depends_on: [payzeno-api]
@@ -185,6 +188,7 @@ services:
     image: payzeno/card-vault:2.3
     ports: ["8099:8099"]
     environment:
+      VAULT_API_KEY: dev-vault-key
       VAULT_MODE: sandbox
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8099/healthz"] }
 
@@ -215,6 +219,10 @@ services:
       MYSQL_ROOT_PASSWORD: payzeno
       MYSQL_USER: payzeno
       MYSQL_PASSWORD: payzeno
+      MYSQL_DATABASE: payzeno_billing
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+00:00"]
+    volumes: ["payzeno-mysql-billing-data:/var/lib/mysql"]
+    healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-upayzeno", "-ppayzeno"]
       interval: 5s
       retries: 30
