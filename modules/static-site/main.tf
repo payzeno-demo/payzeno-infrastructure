@@ -31,6 +31,14 @@ module "names" {
   extra_tags  = var.extra_tags
 }
 
+locals {
+  bucket_name = "${module.names.id}-assets"
+
+  # Vite emits hashed filenames under /assets/. Those are immutable forever. index.html is
+  # not, and caching it is how a deploy goes out and nobody sees it for a day.
+  immutable_path = "/assets/*"
+}
+
 resource "aws_s3_bucket" "this" {
   bucket = local.bucket_name
 
@@ -83,6 +91,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
       noncurrent_days = 30
     }
   }
+}
+
+resource "aws_cloudfront_origin_access_control" "this" {
+  name                              = "${module.names.id}-oac"
+  description                       = "OAC for ${var.service} (${var.environment})"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
 data "aws_iam_policy_document" "bucket" {
@@ -154,9 +170,101 @@ resource "aws_cloudfront_response_headers_policy" "this" {
   }
 }
 
+resource "aws_cloudfront_distribution" "this" {
+  enabled             = true
+  is_ipv6_enabled     = true
+  comment             = "${var.service} — ${var.environment}"
+  default_root_object = "index.html"
+  price_class         = var.price_class
+  aliases             = [var.domain_name]
+
+  origin {
+    origin_id                = local.bucket_name
+    domain_name              = aws_s3_bucket.this.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.this.id
+  }
+
+  default_cache_behavior {
+    target_origin_id       = local.bucket_name
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    # CachingOptimized. index.html is short-TTL by the ordered behaviour below.
+    cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this.id
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = local.immutable_path
+    target_origin_id       = local.bucket_name
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    cache_policy_id            = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this.id
+  }
+
+  # The SPA fallback. Any path the bucket does not have is index.html with a 200, because
+  # /settlements/stl_123 is a client route and a 404 there is a blank page. This is the
+  # CloudFront equivalent of nginx/payzeno-console.conf's `try_files $uri /index.html`, and
+  # the two must agree — local dev goes through nginx, production goes through here.
+  dynamic "custom_error_response" {
+    for_each = var.spa_fallback ? [403, 404] : []
+
+    content {
+      error_code            = custom_error_response.value
+      response_code         = 200
+      response_page_path    = "/index.html"
+      error_caching_min_ttl = 10
+    }
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn      = var.acm_certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
+  }
+
+  tags = merge(module.names.tags, {
+    Name = "${module.names.id}-cdn"
+  })
+
+  lifecycle {
+    precondition {
+      condition     = !var.spa_fallback || var.domain_name != ""
+      error_message = "PAYZENO_INFRA_PRECONDITION: an SPA distribution needs its alias, or every deep link resolves against the cloudfront.net domain and the CSP's connect-src blocks the API call."
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Outputs. Small module; they stay here. (variables.tf is split out anyway — see
+# CONTRIBUTING.md §4 on the honest state of that convention.)
+# ---------------------------------------------------------------------------
+
+output "bucket" {
+  description = "Asset bucket name. The console's deploy job syncs its dist/ here."
+  value       = aws_s3_bucket.this.id
+}
+
 output "bucket_arn" {
   description = "ARN of the asset bucket, for the deploy role's policy."
   value       = aws_s3_bucket.this.arn
+}
+
+output "distribution_id" {
+  description = "CloudFront distribution id. The deploy job invalidates /index.html against this after the sync."
+  value       = aws_cloudfront_distribution.this.id
 }
 
 output "distribution_arn" {
@@ -169,3 +277,7 @@ output "distribution_domain_name" {
   value       = aws_cloudfront_distribution.this.domain_name
 }
 
+output "domain_name" {
+  description = "The console's real hostname — console.payzeno.com in production."
+  value       = var.domain_name
+}

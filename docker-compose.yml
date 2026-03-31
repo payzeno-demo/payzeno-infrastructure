@@ -53,8 +53,14 @@ services:
       BILLING_LEGACY_BASE_URL: http://payzeno-billing-legacy:8090
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
+      # Internal auth. The SAME string as the ledger's INTERNAL_API_SECRET and the legacy
+      # service's PAYZENO_INTERNAL_SECRET. All three must match or nothing talks to anything.
+      INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
+      BILLING_LEGACY_USER: payzeno-api
       BILLING_LEGACY_PASSWORD: dev-legacy-password
       NORDPAY_API_KEY: dev-nordpay-key
+      PROCESSOR_DEFAULT_ACQUIRER: worldflow
+
       API_KEY_PEPPER: dev-api-key-pepper
       AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
@@ -70,6 +76,7 @@ services:
       IDEMPOTENCY_LEASE_SECONDS: "90"
 
       RATE_LIMIT_DEFAULT_RPM: "600"
+      WEBHOOK_MAX_ATTEMPTS: "8"
       # arc MIG. Fees moved in month 3; invoices have not, and will not until
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
@@ -104,6 +111,7 @@ services:
       DATABASE_POOL_MAX_OVERFLOW: "10"
       INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
 
+      SQS_PAYMENTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-payments
       SQS_MERCHANTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-merchants
 
       WORLDFLOW_API_KEY: sandbox_wf_0000000000000000
@@ -111,6 +119,8 @@ services:
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       NORDPAY_BREAKER_THRESHOLD_PCT: "50"
       NORDPAY_BREAKER_WINDOW: "100"
+      NORDPAY_BREAKER_RESET_SECONDS: "30"
+
       RECONCILE_SWEEP_INTERVAL_SECONDS: "900"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
@@ -122,11 +132,16 @@ services:
       # the override file's payzeno-ledger-worker if you are trying to reproduce that.
       RETRY_DRAIN_INTERVAL_SECONDS: "60"
       RETRY_DRAIN_BATCH_SIZE: "50"
+      RETRY_DRAIN_ENABLED: "false"
+
       PAYOUT_CUTOFF_ACH_UTC: "21:00"
       PAYOUT_CUTOFF_SAME_DAY_ACH_UTC: "16:45"
       PAYOUT_CUTOFF_SEPA_UTC: "14:00"
       PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
 
+      LEDGER_AUDIT_ENABLED: "true"
+      SETTLEMENT_IMPORT_ENABLED: "true"
+      FLAG_PAYOUT_SAME_DAY_ACH: "false"
       LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
@@ -151,6 +166,9 @@ services:
 
       BILLING_INVOICE_PREFIX: LOCAL
       BILLING_DUNNING_ENABLED: "false"
+      # The legacy half of arc MIG. These two and the api's FLAG_LEDGER_OWNS_* must agree —
+      # a half-flipped boundary means invoices exist in two places and agree in neither.
+      BILLING_FLAG_LEDGER_OWNS_INVOICES: "false"
       payzeno-mysql-billing: { condition: service_healthy }
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8090/healthz"] }
 
@@ -167,6 +185,8 @@ services:
     build: { context: ../payzeno-console }
     environment:
       VITE_PAYZENO_API_URL: http://localhost/v1
+      VITE_WS_URL: ws://localhost/ws/notifications
+      VITE_VAULT_PUBLIC_URL: http://localhost:8099/public
       VITE_ENVIRONMENT: local
       VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
     depends_on: [payzeno-api]
@@ -178,6 +198,7 @@ services:
     image: payzeno/card-vault:2.3
     ports: ["8099:8099"]
     environment:
+      VAULT_API_KEY: dev-vault-key
       VAULT_MODE: sandbox
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8099/healthz"] }
 
@@ -208,7 +229,12 @@ services:
       MYSQL_ROOT_PASSWORD: payzeno
       MYSQL_USER: payzeno
       MYSQL_PASSWORD: payzeno
+      MYSQL_DATABASE: payzeno_billing
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+00:00"]
+    volumes: ["payzeno-mysql-billing-data:/var/lib/mysql"]
+    healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-upayzeno", "-ppayzeno"]
+      interval: 5s
       retries: 30
 
   payzeno-redis:
