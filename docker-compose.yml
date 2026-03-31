@@ -53,6 +53,9 @@ services:
       BILLING_LEGACY_BASE_URL: http://payzeno-billing-legacy:8090
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
+      # Internal auth. The SAME string as the ledger's INTERNAL_API_SECRET and the legacy
+      # service's PAYZENO_INTERNAL_SECRET. All three must match or nothing talks to anything.
+      INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
       BILLING_LEGACY_USER: payzeno-api
       BILLING_LEGACY_PASSWORD: dev-legacy-password
       NORDPAY_API_KEY: dev-nordpay-key
@@ -73,6 +76,7 @@ services:
       IDEMPOTENCY_LEASE_SECONDS: "90"
 
       RATE_LIMIT_DEFAULT_RPM: "600"
+      WEBHOOK_MAX_ATTEMPTS: "8"
       # arc MIG. Fees moved in month 3; invoices have not, and will not until
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
@@ -137,6 +141,7 @@ services:
 
       LEDGER_AUDIT_ENABLED: "true"
       SETTLEMENT_IMPORT_ENABLED: "true"
+      FLAG_PAYOUT_SAME_DAY_ACH: "false"
       LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
