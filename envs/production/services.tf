@@ -294,3 +294,9 @@ module "payzeno_billing_legacy" {
   memory = 4096
 
   environment_vars = {
+    SPRING_PROFILES_ACTIVE = "production"
+
+    # Read straight out of modules/rds-mysql's hand-built jdbc_url output. The query string
+    # in that output (useSSL, serverTimezone=UTC) is how Hibernate interprets every timestamp
+    # payzeno_billing has ever written — see the comment on the output itself.
+    SPRING_DATASOURCE_URL      = module.db_billing.jdbc_url
