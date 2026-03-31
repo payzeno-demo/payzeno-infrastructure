@@ -135,6 +135,7 @@ services:
       PAYOUT_CUTOFF_SEPA_UTC: "14:00"
       PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC: "17:30"
 
+      LEDGER_AUDIT_ENABLED: "true"
       SETTLEMENT_IMPORT_ENABLED: "true"
       LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
@@ -160,6 +161,9 @@ services:
 
       BILLING_INVOICE_PREFIX: LOCAL
       BILLING_DUNNING_ENABLED: "false"
+      # The legacy half of arc MIG. These two and the api's FLAG_LEDGER_OWNS_* must agree —
+      # a half-flipped boundary means invoices exist in two places and agree in neither.
+      BILLING_FLAG_LEDGER_OWNS_INVOICES: "false"
       payzeno-mysql-billing: { condition: service_healthy }
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8090/healthz"] }
 
@@ -177,6 +181,7 @@ services:
     environment:
       VITE_PAYZENO_API_URL: http://localhost/v1
       VITE_WS_URL: ws://localhost/ws/notifications
+      VITE_VAULT_PUBLIC_URL: http://localhost:8099/public
       VITE_ENVIRONMENT: local
       VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
     depends_on: [payzeno-api]
