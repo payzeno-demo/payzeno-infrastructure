@@ -300,3 +300,15 @@ module "payzeno_billing_legacy" {
     # in that output (useSSL, serverTimezone=UTC) is how Hibernate interprets every timestamp
     # payzeno_billing has ever written — see the comment on the output itself.
     SPRING_DATASOURCE_URL      = module.db_billing.jdbc_url
+    SPRING_DATASOURCE_USERNAME = "payzeno_billing"
+
+    PAYZENO_LEDGER_BASE_URL = "http://payzeno-ledger.production.payzeno.internal:8000"
+    PAYZENO_API_BASE_URL    = "http://payzeno-api.production.payzeno.internal:8080"
+
+    BILLING_INVOICE_PREFIX        = "PZ"
+    BILLING_DUNNING_ENABLED       = "true"
+    BILLING_LEDGER_EXPORT_ENABLED = "true"
+
+    # arc MIG, month 8. Added in the same commit as FLAG_LEDGER_OWNS_INVOICES on the api —
+    # one ticket, two services, because a half-flipped strangler boundary means invoices
+    # exist in two places and agree in neither.
