@@ -80,3 +80,10 @@ variable "evaluation_periods" {
   type        = number
   default     = 3
 }
+
+variable "datapoints_to_alarm" {
+  description = "How many of evaluation_periods must breach. Added by PAY-2055 — the duplicate-settlement alarm needs 1-of-1 on a metric that is normally absent."
+  type        = number
+  default     = null
+}
+
