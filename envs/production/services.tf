@@ -306,3 +306,9 @@ module "payzeno_billing_legacy" {
     PAYZENO_API_BASE_URL    = "http://payzeno-api.production.payzeno.internal:8080"
 
     BILLING_INVOICE_PREFIX        = "PZ"
+    BILLING_DUNNING_ENABLED       = "true"
+    BILLING_LEDGER_EXPORT_ENABLED = "true"
+
+    # arc MIG, month 8. Added in the same commit as FLAG_LEDGER_OWNS_INVOICES on the api —
+    # one ticket, two services, because a half-flipped strangler boundary means invoices
+    # exist in two places and agree in neither.
