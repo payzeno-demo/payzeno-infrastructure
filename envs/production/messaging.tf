@@ -46,6 +46,14 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+module "topic_payments_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-payments-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
 resource "aws_sns_topic" "payzeno_pager" {
   name = "payzeno-production-pager"
 
@@ -53,6 +61,14 @@ resource "aws_sns_topic" "payzeno_pager" {
     Name = "payzeno-production-pager"
     Role = "alarm-destination"
   }
+}
+
+resource "aws_sns_topic_subscription" "pager_pagerduty" {
+  topic_arn = aws_sns_topic.payzeno_pager.arn
+  protocol  = "https"
+  endpoint  = "https://events.pagerduty.com/integration/${var.pagerduty_integration_key}/enqueue"
+
+  endpoint_auto_confirms = true
 }
 
 # Added the morning after PAY-2041. The alarm that would have caught the duplicate
