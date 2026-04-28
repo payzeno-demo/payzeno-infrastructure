@@ -46,6 +46,14 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+module "topic_payments_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-payments-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
 resource "aws_sns_topic" "payzeno_pager" {
   name = "payzeno-production-pager"
 
