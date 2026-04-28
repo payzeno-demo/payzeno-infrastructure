@@ -324,3 +324,9 @@ module "payzeno_billing_legacy" {
     # SPRING_DATASOURCE_PASSWORD comes from the RDS-managed master credential rather than
     # from modules/secrets — rds-mysql predates that module and manages its own.
     SPRING_DATASOURCE_PASSWORD = module.db_billing.master_user_secret_arn
+    PAYZENO_INTERNAL_SECRET    = module.platform_secrets.secret_arns["INTERNAL_API_SECRET"]
+  }
+
+  vpc_id                = local.vpc_id
+  subnet_ids            = local.subnet_ids
+  cluster_arn           = aws_ecs_cluster.payzeno.arn
