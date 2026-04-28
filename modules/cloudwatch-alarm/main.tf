@@ -87,3 +87,10 @@ variable "datapoints_to_alarm" {
   default     = null
 }
 
+variable "treat_missing_data" {
+  description = "missing | notBreaching | breaching | ignore. Added by PAY-2055 for the same reason."
+  type        = string
+  default     = "missing"
+
+  validation {
+    condition     = contains(["missing", "notBreaching", "breaching", "ignore"], var.treat_missing_data)
