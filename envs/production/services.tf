@@ -312,3 +312,9 @@ module "payzeno_billing_legacy" {
     # arc MIG, month 8. Added in the same commit as FLAG_LEDGER_OWNS_INVOICES on the api —
     # one ticket, two services, because a half-flipped strangler boundary means invoices
     # exist in two places and agree in neither.
+    BILLING_FLAG_LEDGER_OWNS_INVOICES = "false"
+    BILLING_FLAG_LEDGER_OWNS_FEES     = "true"
+
+    LOG_LEVEL                   = "info"
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.production.payzeno.internal:4318"
+    AWS_REGION                  = local.region
