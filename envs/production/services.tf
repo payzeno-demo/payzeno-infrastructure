@@ -318,3 +318,9 @@ module "payzeno_billing_legacy" {
     LOG_LEVEL                   = "info"
     OTEL_EXPORTER_OTLP_ENDPOINT = "http://otel-collector.production.payzeno.internal:4318"
     AWS_REGION                  = local.region
+  }
+
+  secrets = {
+    # SPRING_DATASOURCE_PASSWORD comes from the RDS-managed master credential rather than
+    # from modules/secrets — rds-mysql predates that module and manages its own.
+    SPRING_DATASOURCE_PASSWORD = module.db_billing.master_user_secret_arn
