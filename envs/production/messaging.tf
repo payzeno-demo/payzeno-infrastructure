@@ -143,6 +143,38 @@ module "q_ledger_merchants" {
 # Queues — payzeno-api consumers
 # ---------------------------------------------------------------------------
 
+module "q_api_webhooks" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-api-webhooks"
+  environment = local.environment
+  topic_arn   = module.topic_ledger_events.topic_arn
+
+  # WebhookFanoutConsumer (payzeno-api) — the only writer of webhook_event.
+  #
+  # This queue is subscribed to BOTH payments and ledger, same as console-notifications:
+  # payment.failed / refund.* / dispute.evidence_submitted are on payments, and
+  # payout.scheduled / settlement.item_settled are on ledger. The second subscription is
+  # aws_sns_topic_subscription.api_webhooks_payments below.
+  filter_policy = {
+    event_type = [
+      "payout.scheduled",
+      "settlement.item_settled",
+    ]
+  }
+
+  additional_topic_arns = [module.topic_payments_events.topic_arn]
+
+  # Outbound HTTP to merchant endpoints happens in WebhookDeliveryJob, not in the consumer,
+  # so the handler is a database insert and 60s is plenty.
+  visibility_timeout          = 60
+  age_alarm_threshold_seconds = 600
+  depth_alarm_threshold       = 5000
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
 resource "aws_sns_topic_subscription" "api_webhooks_payments" {
   topic_arn = module.topic_payments_events.topic_arn
   protocol  = "sqs"
