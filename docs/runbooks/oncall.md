@@ -105,6 +105,26 @@ until PAY-2059 lands the backoff and the breaker.
 
 ---
 
+## retry-backlog
+
+**Alarm:** `payzeno-ledger-production-retry-drain-depth` — Sev2.
+
+More than 500 items are sitting in a retryable status.
+
+The drain runs on **one** task (`module.payzeno_ledger_canary`, the only place
+`RETRY_DRAIN_ENABLED=true`). It clears roughly 200 items a minute in the good case. Above
+about 500 it cannot catch up inside a 900s sweep interval, which means the next sweep starts
+while the drain is still working — and that is the overlap.
+
+1. Find out why items are going retryable. It is almost always an acquirer.
+2. If an acquirer is degraded: leave it. The breaker will do its job and the backlog will
+   drain when the acquirer recovers. Hammering a degraded acquirer for 22 minutes is what we
+   did last time and it is why PAY-2059 exists.
+3. If the backlog is growing **and** the acquirers are healthy, treat it as a
+   [duplicate-settlement](#duplicate-settlement) precursor: scale to one task and page.
+
+---
+
 ## secrets and rotation
 
 A task that will not start with no application logs at all is usually a secret it cannot
