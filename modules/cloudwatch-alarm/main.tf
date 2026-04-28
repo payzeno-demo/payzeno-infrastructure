@@ -87,3 +87,17 @@ variable "datapoints_to_alarm" {
   default     = null
 }
 
+variable "treat_missing_data" {
+  description = "missing | notBreaching | breaching | ignore. Added by PAY-2055 for the same reason."
+  type        = string
+  default     = "missing"
+
+  validation {
+    condition     = contains(["missing", "notBreaching", "breaching", "ignore"], var.treat_missing_data)
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: treat_missing_data must be one of missing, notBreaching, breaching, ignore."
+  }
+}
+
+variable "dimensions" {
+  description = "Metric dimensions, e.g. { ClusterName = ..., ServiceName = ... }."
+  type        = map(string)

@@ -46,6 +46,14 @@ resource "aws_kms_alias" "bus" {
 # Topics
 # ---------------------------------------------------------------------------
 
+module "topic_payments_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-payments-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
 resource "aws_sns_topic" "payzeno_pager" {
   name = "payzeno-production-pager"
 
@@ -53,6 +61,14 @@ resource "aws_sns_topic" "payzeno_pager" {
     Name = "payzeno-production-pager"
     Role = "alarm-destination"
   }
+}
+
+resource "aws_sns_topic_subscription" "pager_pagerduty" {
+  topic_arn = aws_sns_topic.payzeno_pager.arn
+  protocol  = "https"
+  endpoint  = "https://events.pagerduty.com/integration/${var.pagerduty_integration_key}/enqueue"
+
+  endpoint_auto_confirms = true
 }
 
 # Added the morning after PAY-2041. The alarm that would have caught the duplicate
@@ -126,6 +142,38 @@ module "q_ledger_merchants" {
 # ---------------------------------------------------------------------------
 # Queues — payzeno-api consumers
 # ---------------------------------------------------------------------------
+
+module "q_api_webhooks" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-api-webhooks"
+  environment = local.environment
+  topic_arn   = module.topic_ledger_events.topic_arn
+
+  # WebhookFanoutConsumer (payzeno-api) — the only writer of webhook_event.
+  #
+  # This queue is subscribed to BOTH payments and ledger, same as console-notifications:
+  # payment.failed / refund.* / dispute.evidence_submitted are on payments, and
+  # payout.scheduled / settlement.item_settled are on ledger. The second subscription is
+  # aws_sns_topic_subscription.api_webhooks_payments below.
+  filter_policy = {
+    event_type = [
+      "payout.scheduled",
+      "settlement.item_settled",
+    ]
+  }
+
+  additional_topic_arns = [module.topic_payments_events.topic_arn]
+
+  # Outbound HTTP to merchant endpoints happens in WebhookDeliveryJob, not in the consumer,
+  # so the handler is a database insert and 60s is plenty.
+  visibility_timeout          = 60
+  age_alarm_threshold_seconds = 600
+  depth_alarm_threshold       = 5000
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
 
 resource "aws_sns_topic_subscription" "api_webhooks_payments" {
   topic_arn = module.topic_payments_events.topic_arn
