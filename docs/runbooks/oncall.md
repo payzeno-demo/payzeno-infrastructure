@@ -125,6 +125,54 @@ while the drain is still working — and that is the overlap.
 
 ---
 
+## tasks-below-desired
+
+**Alarm:** `*-tasks-below-desired`.
+
+Fewer tasks are running than `desired_count`. Either they are crashing or they cannot be
+placed.
+
+```bash
+aws ecs describe-services --cluster $CLUSTER --services $SVC \
+  --query 'services[0].events[:20]'
+
+aws ecs list-tasks --cluster $CLUSTER --service-name $SVC --desired-status STOPPED
+aws ecs describe-tasks --cluster $CLUSTER --tasks <arn> \
+  --query 'tasks[0].{stopped:stoppedReason,containers:containers[].{n:name,r:reason,e:exitCode}}'
+```
+
+`OutOfMemoryError: Container killed due to memory usage` means the task `memory` in
+`envs/production/services.tf` is too low for what the service is now doing. Raise it in a PR;
+do not raise it in the console, because the next apply will put it back.
+
+---
+
+## database-cpu-high
+
+**Alarm:** `*-db-cpu-high`.
+
+```bash
+aws rds describe-db-instances --db-instance-identifier payzeno-ledger-production \
+  --query 'DBInstances[0].{class:DBInstanceClass,pg:DBParameterGroups[0].DBParameterGroupName,pi:PerformanceInsightsEnabled}'
+```
+
+Confirm the instance is actually on `payzeno-ledger-production-db-pg15`. If it is not, the
+parameter group change is pending a reboot and `pg_stat_statements` is not loaded, which
+means the next step will not work.
+
+Then find the query. Performance Insights is on for both production instances (731-day
+retention on the ledger), or from psql:
+
+```sql
+select calls, round(mean_exec_time::numeric, 1) as mean_ms,
+       round(total_exec_time::numeric / 1000, 1) as total_s, query
+from pg_stat_statements
+order by total_exec_time desc
+limit 20;
+```
+
+---
+
 ## secrets and rotation
 
 A task that will not start with no application logs at all is usually a secret it cannot

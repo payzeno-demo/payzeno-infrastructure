@@ -50,6 +50,35 @@ person to deploy will put the broken tag back.
 
 ---
 
+## Deploying infrastructure
+
+```bash
+make plan ENV=staging      # writes envs/staging/plan.txt
+# read it. all of it.
+make apply ENV=staging
+```
+
+`ENV` defaults to `staging`. That is not an accident.
+
+The rules, in order of how much they cost when ignored:
+
+1. **Staging first, always.** Even for a change that is production-only in effect. CI
+   validates both roots, but only an apply tells you the provider agrees with you — and the
+   two roots are on different provider versions (`~> 5.42` here, `~> 5.49` there).
+2. **Paste the plan in the PR.** `make plan` writes `plan.txt` next to the root. Paste the
+   text. Do **not** attach the binary `tfplan` — it renders resolved values and some of ours
+   come out of Secrets Manager.
+3. **Two approvals for `envs/production/`.** One of them is infra. CODEOWNERS enforces it.
+4. **Apply the plan you reviewed.** `make apply` applies the saved `tfplan` file and nothing
+   else. If the plan is stale, terraform refuses. Re-plan; do not `-auto-approve` your way
+   past it.
+5. **One concern per PR.** A PR that changes an env var and an instance class produces a plan
+   nobody reads to the end.
+
+Applies are manual and they are from a laptop with the infra role assumed. CI plans and
+lints; CI never applies. That is deliberate — the CI role
+(`payzeno-ci-terraform-plan`) has no write permissions at all.
+
 ### Reading a plan
 
 Things worth stopping for, none of which terraform highlights:
