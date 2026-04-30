@@ -13,3 +13,18 @@
 #
 # payzeno-ledger/docs/postmortems/2041-duplicate-settlement.md names these resource addresses
 # literally, and so do PAY-2054 and PAY-2059. Refactoring this file onto the module means
+# updating those in the same PR. It is a real ticket, not a drive-by. Leave it.
+#
+# What these alarms are for, in one line each:
+#
+#   We shipped 1,847 duplicate settle transactions and 218 duplicate cardholder captures, and
+#   the way we found out was a merchant's support email nineteen hours later. Every alarm in
+#   this file would have fired inside five minutes. None of them existed.
+
+locals {
+  ledger_namespace = "Payzeno/Ledger"
+
+  # Every alarm in this file goes to the pager AND to #incidents. See the second subscription
+  # on aws_sns_topic.payzeno_pager in messaging.tf — same postmortem, same reason.
+  ledger_alarm_actions = [aws_sns_topic.payzeno_pager.arn]
+
