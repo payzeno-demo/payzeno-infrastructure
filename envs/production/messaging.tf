@@ -250,6 +250,31 @@ module "q_api_billing" {
   runbook_base_url = local.runbook_base_url
 }
 
+module "q_dlq_monitor" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-dlq-monitor"
+  environment = local.environment
+
+  # No topic. DeadLetterConsumer reads this queue, which is fed by redrive rather than by a
+  # subscription — that is why topic_arn is null and the filter policy is empty, and it is
+  # the one queue in this file for which that is correct.
+  topic_arn = null
+
+  message_retention_seconds   = 1209600
+  visibility_timeout          = 60
+  max_receive_count           = 3
+  age_alarm_threshold_seconds = 300
+  depth_alarm_threshold       = 1
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+# ---------------------------------------------------------------------------
+# Queues — payzeno-billing-legacy consumers
+# ---------------------------------------------------------------------------
+
 resource "aws_sqs_queue" "ledger_settlements" {
   name                      = "payzeno-ledger-settlements"
   message_retention_seconds = 345600

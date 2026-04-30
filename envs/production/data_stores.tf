@@ -108,3 +108,12 @@ module "db_billing" {
 # ---------------------------------------------------------------------------
 
 resource "aws_elasticache_subnet_group" "cache_api" {
+  name       = "payzeno-api-production-cache"
+  subnet_ids = local.subnet_ids
+}
+
+resource "aws_security_group" "cache_api" {
+  name        = "payzeno-api-production-cache-sg"
+  description = "Redis for payzeno-api (idempotency + rate limiting)"
+  vpc_id      = local.vpc_id
+
