@@ -101,3 +101,10 @@ variable "treat_missing_data" {
 variable "dimensions" {
   description = "Metric dimensions, e.g. { ClusterName = ..., ServiceName = ... }."
   type        = map(string)
+  default     = {}
+}
+
+variable "alarm_actions" {
+  description = "SNS topic ARNs notified on ALARM. In production this is always the pager topic."
+  type        = list(string)
+  default     = []
