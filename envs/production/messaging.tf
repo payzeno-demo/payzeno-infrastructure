@@ -54,6 +54,22 @@ module "topic_payments_events" {
   kms_key_arn = aws_kms_key.bus.arn
 }
 
+# Created month 6, when invoice.issued landed in contracts and the strangler needed a way to
+# get invoices out of the legacy biller without the api polling it. Before that this topic
+# did not exist and module.q_api_billing did not either.
+module "topic_billing_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-billing-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
+# ---------------------------------------------------------------------------
+# The pager. Not an application topic — this is where every cloudwatch-alarm's alarm_actions
+# point.
+# ---------------------------------------------------------------------------
+
 resource "aws_sns_topic" "payzeno_pager" {
   name = "payzeno-production-pager"
 
@@ -250,6 +266,31 @@ module "q_api_billing" {
   runbook_base_url = local.runbook_base_url
 }
 
+module "q_dlq_monitor" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-dlq-monitor"
+  environment = local.environment
+
+  # No topic. DeadLetterConsumer reads this queue, which is fed by redrive rather than by a
+  # subscription — that is why topic_arn is null and the filter policy is empty, and it is
+  # the one queue in this file for which that is correct.
+  topic_arn = null
+
+  message_retention_seconds   = 1209600
+  visibility_timeout          = 60
+  max_receive_count           = 3
+  age_alarm_threshold_seconds = 300
+  depth_alarm_threshold       = 1
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+# ---------------------------------------------------------------------------
+# Queues — payzeno-billing-legacy consumers
+# ---------------------------------------------------------------------------
+
 resource "aws_sqs_queue" "ledger_settlements" {
   name                      = "payzeno-ledger-settlements"
   message_retention_seconds = 345600
@@ -274,6 +315,17 @@ check "console_notifications_has_two_subscriptions" {
     error_message = "PAYZENO_INFRA_DRIFT: payzeno-console-notifications and payzeno-api-webhooks each need TWO topic subscriptions (payments + ledger). Losing the payments one silently stops dispute.opened reaching the console and stops payment.failed reaching merchant webhooks. It is the easiest thing in this file to delete while tidying."
   }
 }
+
+check "no_accidentally_unconsumed_event_types" {
+  assert {
+    condition     = length(local.accidentally_unconsumed) == 0
+    error_message = "PAYZENO_INFRA_DRIFT: these event types have no subscriber and are not on the intentionally-unconsumed list: ${join(", ", local.accidentally_unconsumed)}. Either a consumer was added to contracts without a filter policy here, or a filter policy lost a member."
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Outputs consumed by services.tf
+# ---------------------------------------------------------------------------
 
 output "pager_topic_arn" {
   description = "The alarm destination. Every module's alarm_actions points here."
