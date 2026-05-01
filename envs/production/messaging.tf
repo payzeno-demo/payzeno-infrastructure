@@ -54,6 +54,22 @@ module "topic_payments_events" {
   kms_key_arn = aws_kms_key.bus.arn
 }
 
+# Created month 6, when invoice.issued landed in contracts and the strangler needed a way to
+# get invoices out of the legacy biller without the api polling it. Before that this topic
+# did not exist and module.q_api_billing did not either.
+module "topic_billing_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-billing-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
+# ---------------------------------------------------------------------------
+# The pager. Not an application topic — this is where every cloudwatch-alarm's alarm_actions
+# point.
+# ---------------------------------------------------------------------------
+
 resource "aws_sns_topic" "payzeno_pager" {
   name = "payzeno-production-pager"
 

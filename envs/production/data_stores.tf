@@ -125,3 +125,12 @@ resource "aws_security_group" "cache_api" {
 
 resource "aws_elasticache_replication_group" "cache_api" {
   replication_group_id = "payzeno-api-production"
+  description          = "payzeno-api idempotency store and rate-limit counters"
+
+  engine         = "redis"
+  engine_version = "7.1"
+  node_type      = "cache.m6g.large"
+  port           = 6379
+
+  num_cache_clusters         = 2
+  automatic_failover_enabled = true
