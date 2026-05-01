@@ -121,3 +121,18 @@ resource "aws_sqs_queue_redrive_policy" "this" {
 }
 
 resource "aws_sqs_queue_redrive_allow_policy" "dlq" {
+  queue_url = aws_sqs_queue.dlq.id
+
+  redrive_allow_policy = jsonencode({
+    redrivePermission = "byQueue"
+    sourceQueueArns   = [aws_sqs_queue.this.arn]
+  })
+}
+
+# ---------------------------------------------------------------------------
+# Delivery permission + subscription
+# ---------------------------------------------------------------------------
+
+data "aws_iam_policy_document" "queue" {
+  dynamic "statement" {
+    for_each = length(local.delivering_topic_arns) > 0 ? [1] : []
