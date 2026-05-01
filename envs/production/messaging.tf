@@ -99,6 +99,13 @@ resource "aws_sns_topic_subscription" "pager_slack_incidents" {
   endpoint_auto_confirms = true
 }
 
+variable "pagerduty_integration_key" {
+  description = "PagerDuty Events API v2 integration key for the payzeno-production service. Supplied at apply time; not in state as a secret because the endpoint URL is the credential and it is rotated by rotating the integration."
+  type        = string
+  sensitive   = true
+  default     = "PLACEHOLDER_SET_AT_APPLY"
+}
+
 module "q_ledger_payments" {
   source = "../../modules/sqs-queue"
 
