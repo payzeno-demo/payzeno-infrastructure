@@ -117,3 +117,11 @@ resource "aws_security_group" "cache_api" {
   description = "Redis for payzeno-api (idempotency + rate limiting)"
   vpc_id      = local.vpc_id
 
+  tags = {
+    Name    = "payzeno-api-production-cache-sg"
+    Service = "payzeno-api"
+  }
+}
+
+resource "aws_elasticache_replication_group" "cache_api" {
+  replication_group_id = "payzeno-api-production"
