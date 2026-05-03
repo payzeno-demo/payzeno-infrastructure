@@ -108,3 +108,37 @@ module "db_billing" {
 # ---------------------------------------------------------------------------
 
 resource "aws_elasticache_subnet_group" "cache_api" {
+  name       = "payzeno-api-production-cache"
+  subnet_ids = local.subnet_ids
+}
+
+resource "aws_security_group" "cache_api" {
+  name        = "payzeno-api-production-cache-sg"
+  description = "Redis for payzeno-api (idempotency + rate limiting)"
+  vpc_id      = local.vpc_id
+
+  tags = {
+    Name    = "payzeno-api-production-cache-sg"
+    Service = "payzeno-api"
+  }
+}
+
+resource "aws_elasticache_replication_group" "cache_api" {
+  replication_group_id = "payzeno-api-production"
+  description          = "payzeno-api idempotency store and rate-limit counters"
+
+  engine         = "redis"
+  engine_version = "7.1"
+  node_type      = "cache.m6g.large"
+  port           = 6379
+
+  num_cache_clusters         = 2
+  automatic_failover_enabled = true
+  multi_az_enabled           = true
+
+  subnet_group_name  = aws_elasticache_subnet_group.cache_api.name
+  security_group_ids = [aws_security_group.cache_api.id]
+
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+
