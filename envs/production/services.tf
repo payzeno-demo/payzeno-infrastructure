@@ -330,3 +330,9 @@ module "payzeno_billing_legacy" {
   vpc_id                = local.vpc_id
   subnet_ids            = local.subnet_ids
   cluster_arn           = aws_ecs_cluster.payzeno.arn
+  alb_listener_arn      = aws_lb_listener.https.arn
+  alb_security_group_id = aws_security_group.alb.id
+
+  # The legacy service is not PCI scope — it never sees a PAN — so on paper it could keep the
+  # old 365-day retention. It does not: modules/ecs-service has a precondition capping
+  # production at 90, and carving out an exception for one service is a worse trade than the

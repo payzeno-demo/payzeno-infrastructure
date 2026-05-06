@@ -70,6 +70,7 @@ services:
       SNS_MERCHANT_TOPIC_ARN: arn:aws:sns:eu-west-1:000000000000:payzeno-merchant-events
       SQS_LEDGER_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-ledger
       SQS_API_WEBHOOKS_URL: http://payzeno-localstack:4566/000000000000/payzeno-api-webhooks
+      SQS_CONSOLE_NOTIFICATIONS_URL: http://payzeno-localstack:4566/000000000000/payzeno-console-notifications
       SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
 
       IDEMPOTENCY_TTL_HOURS: "24"
@@ -77,6 +78,7 @@ services:
 
       RATE_LIMIT_DEFAULT_RPM: "600"
       WEBHOOK_MAX_ATTEMPTS: "8"
+      WEBHOOK_RETRY_WINDOW_HOURS: "24"
       # arc MIG. Fees moved in month 3; invoices have not, and will not until
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
@@ -115,6 +117,7 @@ services:
       SQS_MERCHANTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-merchants
 
       WORLDFLOW_API_KEY: sandbox_wf_0000000000000000
+      WORLDFLOW_BREAKER_THRESHOLD_PCT: "50"
       WORLDFLOW_BREAKER_RESET_SECONDS: "30"
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       NORDPAY_BREAKER_THRESHOLD_PCT: "50"
