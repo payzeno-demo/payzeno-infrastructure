@@ -114,3 +114,10 @@ variable "ok_actions" {
   description = "SNS topic ARNs notified on OK. Threaded through but every caller currently leaves this empty — recovery pages were noise."
   type        = list(string)
   default     = []
+}
+
+variable "runbook_url" {
+  description = "Deep link to the runbook section that tells the on-call what to do. Required."
+  type        = string
+
+  validation {

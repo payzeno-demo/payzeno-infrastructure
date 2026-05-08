@@ -43,3 +43,18 @@ locals {
 # services.tf. If someone turns that flag off, this alarm goes quiet rather than going green,
 # and there is nothing here that can tell the difference. That is the known weakness of this
 # alarm and it is written down in the runbook.
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "ledger_duplicate_settlement" {
+  alarm_name        = "payzeno-ledger-production-duplicate-settlement"
+  alarm_description = "payzeno-ledger detected a duplicate settle transaction. A duplicate settlement is internally balanced, so nothing else will tell you. If capture_at_settlement is on for the merchant, the cardholder has been charged twice. Runbook: ${local.ledger_runbook}#duplicate-settlement"
+
+  namespace   = local.ledger_namespace
+  metric_name = "DuplicateSettlementDetected"
+  statistic   = "Sum"
+
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  threshold           = 1
+  period              = 300
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
