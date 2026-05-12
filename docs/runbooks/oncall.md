@@ -77,6 +77,57 @@ suspected duplicate and this alarm never fired, check the flag before you conclu
 
 ---
 
+## scale the ledger to one task
+
+The reconciliation sweep and the retry drain are two independent schedulers that both process
+items in `RETRYABLE_STATUSES`. They serialise against *themselves* and not against each
+other. One ledger task cannot overlap itself, so cutting to one task removes the concurrency
+without turning anything off.
+
+```bash
+# current state first — write it in #incidents before you change it
+aws ecs describe-services --cluster $CLUSTER \
+  --services payzeno-ledger-production payzeno-ledger-production-canary \
+  --query 'services[].{name:serviceName,desired:desiredCount,running:runningCount}'
+
+aws ecs update-service --cluster $CLUSTER \
+  --service payzeno-ledger-production --desired-count 1
+
+aws ecs update-service --cluster $CLUSTER \
+  --service payzeno-ledger-production-canary --desired-count 0
+```
+
+Application autoscaling will fight you. Suspend it first:
+
+```bash
+aws application-autoscaling register-scalable-target \
+  --service-namespace ecs \
+  --resource-id service/$CLUSTER/payzeno-ledger-production \
+  --scalable-dimension ecs:service:DesiredCount \
+  --min-capacity 1 --max-capacity 1
+```
+
+**One task is a degraded state, not a fix.** Settlement throughput drops to roughly a quarter
+and the API's `/v1/settlements` reads get slower. It is survivable for hours, not for a day.
+Put it back when the cause is fixed:
+
+```bash
+aws application-autoscaling register-scalable-target \
+  --service-namespace ecs \
+  --resource-id service/$CLUSTER/payzeno-ledger-production \
+  --scalable-dimension ecs:service:DesiredCount \
+  --min-capacity 4 --max-capacity 12
+
+aws ecs update-service --cluster $CLUSTER \
+  --service payzeno-ledger-production --desired-count 4
+```
+
+Then land the same numbers in `envs/production/services.tf` in a PR the same day. A console
+change that terraform does not know about is a change that reverts itself on the next apply,
+at a time nobody has chosen.
+
+---
+
 ## reconciliation-lag
 
 **Alarm:** `payzeno-ledger-production-reconciliation-lag` — Sev2.

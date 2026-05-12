@@ -336,3 +336,9 @@ module "payzeno_billing_legacy" {
   # The legacy service is not PCI scope — it never sees a PAN — so on paper it could keep the
   # old 365-day retention. It does not: modules/ecs-service has a precondition capping
   # production at 90, and carving out an exception for one service is a worse trade than the
+  # nine months of Flyway logs we lose. PAY-1761.
+  log_retention_days = 90
+
+  autoscaling_min        = 2
+  autoscaling_max        = 4
+  autoscaling_target_cpu = 70
