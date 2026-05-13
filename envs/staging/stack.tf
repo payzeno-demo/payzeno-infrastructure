@@ -431,3 +431,17 @@ module "payzeno_vault" {
   environment_vars = {
     PORT       = "8099"
     LOG_LEVEL  = "info"
+    AWS_REGION = local.region
+  }
+
+  secrets = {}
+
+  vpc_id      = local.vpc_id
+  subnet_ids  = local.subnet_ids
+  cluster_arn = aws_ecs_cluster.payzeno.arn
+
+  alb_listener_arn     = null
+  enable_nginx_sidecar = false
+
+  log_retention_days = 14
+
