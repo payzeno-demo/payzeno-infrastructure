@@ -342,3 +342,9 @@ module "payzeno_billing_legacy" {
   autoscaling_min        = 2
   autoscaling_max        = 4
   autoscaling_target_cpu = 70
+
+  pager_topic_arn  = aws_sns_topic.payzeno_pager.arn
+  runbook_base_url = local.runbook_base_url
+}
+
+# ---------------------------------------------------------------------------
