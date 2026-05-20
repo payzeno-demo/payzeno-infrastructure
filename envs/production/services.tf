@@ -348,3 +348,9 @@ module "payzeno_billing_legacy" {
 }
 
 # ---------------------------------------------------------------------------
+# payzeno-vault — vendor card vault. Not ALB-fronted: the only public surface it has is the
+# PAN entry iframe, which is served from vault.payzeno.com through its own distribution and
+# not through our ALB. Everything else reaches it over service discovery.
+# ---------------------------------------------------------------------------
+
+module "payzeno_vault" {
