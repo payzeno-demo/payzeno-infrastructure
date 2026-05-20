@@ -172,6 +172,8 @@ services:
       # The legacy half of arc MIG. These two and the api's FLAG_LEDGER_OWNS_* must agree —
       # a half-flipped boundary means invoices exist in two places and agree in neither.
       BILLING_FLAG_LEDGER_OWNS_INVOICES: "false"
+      BILLING_FLAG_LEDGER_OWNS_FEES: "true"
+    depends_on:
       payzeno-mysql-billing: { condition: service_healthy }
     healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:8090/healthz"] }
 
@@ -214,6 +216,12 @@ services:
     volumes: ["payzeno-postgres-api-data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
+      retries: 20
+
+  payzeno-postgres-ledger:
+    image: postgres:15-alpine
+    ports: ["5433:5432"]
+    environment:
       POSTGRES_USER: payzeno
       POSTGRES_PASSWORD: payzeno
       POSTGRES_DB: payzeno_ledger
@@ -223,6 +231,7 @@ services:
     # not sharing a buffer cache with the API's request path.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_ledger"]
+      timeout: 3s
       retries: 20
 
   payzeno-mysql-billing:
