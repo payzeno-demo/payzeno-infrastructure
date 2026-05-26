@@ -41,6 +41,11 @@ output "dlq_name" {
   value       = aws_sqs_queue.dlq.name
 }
 
+output "subscription_arn" {
+  description = "ARN of the SNS subscription this module created. Null for a queue with no topic (the DLQ monitor). envs/production/messaging.tf's drift check counts these."
+  value       = local.has_subscription ? aws_sns_topic_subscription.this[0].arn : null
+}
+
 output "subscribed_event_types" {
   description = "The event types this queue's filter policy admits. Exposed so envs/*/messaging.tf can assert the union across all queues against EVENT_TYPES and prove which three are deliberately unconsumed."
   value       = local.filter_event_types

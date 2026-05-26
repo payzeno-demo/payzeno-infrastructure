@@ -136,3 +136,19 @@ resource "aws_sqs_queue_redrive_allow_policy" "dlq" {
 data "aws_iam_policy_document" "queue" {
   dynamic "statement" {
     for_each = length(local.delivering_topic_arns) > 0 ? [1] : []
+
+    content {
+      sid       = "AllowSnsDelivery"
+      effect    = "Allow"
+      actions   = ["sqs:SendMessage"]
+      resources = [aws_sqs_queue.this.arn]
+
+      principals {
+        type        = "Service"
+        identifiers = ["sns.amazonaws.com"]
+      }
+
+      condition {
+        test     = "ArnEquals"
+        variable = "aws:SourceArn"
+        values   = local.delivering_topic_arns

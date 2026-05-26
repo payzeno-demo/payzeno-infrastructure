@@ -314,6 +314,64 @@ resource "aws_sqs_queue" "ledger_settlements" {
 # Drift checks. PAYZENO_INFRA_DRIFT — warnings on every plan, never a hard failure.
 # ---------------------------------------------------------------------------
 
+locals {
+  # Queues that carry exactly one topic subscription created by their own module.
+  single_subscription_queues = {
+    "payzeno-ledger-payments"   = module.q_ledger_payments.subscription_arn
+    "payzeno-ledger-merchants"  = module.q_ledger_merchants.subscription_arn
+    "payzeno-api-ledger"        = module.q_api_ledger.subscription_arn
+    "payzeno-api-billing"       = module.q_api_billing.subscription_arn
+    "payzeno-billing-merchants" = module.q_billing_merchants.subscription_arn
+  }
+
+  # The two that must have a second subscription created here, and the resource that is it.
+  double_subscription_queues = {
+    "payzeno-api-webhooks"          = aws_sns_topic_subscription.api_webhooks_payments.arn
+    "payzeno-console-notifications" = aws_sns_topic_subscription.console_notifications_payments.arn
+  }
+
+  # Union of everything any queue admits. Used to prove the three unconsumed types are the
+  # only three, so that "we forgot one" and "we meant to leave it" are distinguishable.
+  subscribed_event_types = toset(concat(
+    module.q_ledger_payments.subscribed_event_types,
+    module.q_ledger_merchants.subscribed_event_types,
+    module.q_api_ledger.subscribed_event_types,
+    module.q_api_webhooks.subscribed_event_types,
+    module.q_console_notifications.subscribed_event_types,
+    module.q_api_billing.subscribed_event_types,
+    module.q_billing_merchants.subscribed_event_types,
+    ["payment.failed", "refund.succeeded", "refund.failed", "dispute.evidence_submitted"],
+    ["dispute.opened"],
+  ))
+
+  intentionally_unconsumed = toset([
+    "settlement.batch_closed",
+    "settlement.reconciliation_failed",
+    "ledger.transaction_posted",
+  ])
+
+  # Types that exist in the contract, are not subscribed, and are not on the intentional
+  # list. Should always be empty.
+  accidentally_unconsumed = setsubtract(
+    setsubtract(toset(local.all_event_types), local.subscribed_event_types),
+    local.intentionally_unconsumed,
+  )
+
+  all_event_types = [
+    "payment.authorized", "payment.captured", "payment.failed", "payment.canceled",
+    "refund.created", "refund.succeeded", "refund.failed",
+    "dispute.opened", "dispute.evidence_submitted", "dispute.closed",
+    "merchant.created", "merchant.updated", "merchant.status_changed",
+    "merchant.bank_account_verified",
+    "settlement.completed", "settlement.item_settled", "settlement.batch_closed",
+    "settlement.funded", "settlement.variance_detected",
+    "settlement.duplicate_detected", "settlement.reconciliation_failed",
+    "payout.scheduled", "payout.paid", "payout.failed", "payout.returned",
+    "ledger.transaction_posted", "ledger.imbalance_detected",
+    "invoice.issued",
+  ]
+}
+
 check "console_notifications_has_two_subscriptions" {
   assert {
     condition = alltrue([
