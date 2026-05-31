@@ -360,3 +360,9 @@ module "payzeno_vault" {
   environment    = local.environment
   image          = local.images.vault
   container_port = 8099
+  desired_count  = 2
+
+  cpu    = 1024
+  memory = 2048
+
+  environment_vars = {

@@ -53,3 +53,13 @@ variable "recovery_window_days" {
   type        = number
   default     = 30
 }
+
+variable "kms_deletion_window_days" {
+  description = "Waiting period before the CMK is actually destroyed."
+  type        = number
+  default     = 30
+}
+
+variable "purpose" {
+  description = <<-EOT
+    Disambiguator when one service has more than one secrets module. Empty for the default
