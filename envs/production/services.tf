@@ -354,3 +354,9 @@ module "payzeno_billing_legacy" {
 # ---------------------------------------------------------------------------
 
 module "payzeno_vault" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-vault"
+  environment    = local.environment
+  image          = local.images.vault
+  container_port = 8099

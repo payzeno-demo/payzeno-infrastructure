@@ -44,3 +44,12 @@ variable "rotation_days" {
 
   validation {
     condition     = var.rotation_days == 0 || (var.rotation_days >= 30 && var.rotation_days <= 365)
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: rotation_days must be 0 (manual) or between 30 and 365."
+  }
+}
+
+variable "recovery_window_days" {
+  description = "Deletion recovery window. 0 means immediate destroy and is only acceptable in staging."
+  type        = number
+  default     = 30
+}
