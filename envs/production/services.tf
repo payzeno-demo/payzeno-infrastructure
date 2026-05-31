@@ -366,3 +366,9 @@ module "payzeno_vault" {
   memory = 2048
 
   environment_vars = {
+    PORT       = "8099"
+    LOG_LEVEL  = "warn"
+    AWS_REGION = local.region
+  }
+
+  secrets = {}

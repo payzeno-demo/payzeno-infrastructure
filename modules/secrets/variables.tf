@@ -63,3 +63,12 @@ variable "kms_deletion_window_days" {
 variable "purpose" {
   description = <<-EOT
     Disambiguator when one service has more than one secrets module. Empty for the default
+    instantiation; "db" for the credentials rds-postgres creates, "cache" for the Redis URL,
+    "platform" for the shared api secrets. It only affects the CMK alias and the CMK's Name
+    tag — the secret paths are keyed on the secret name and never collided.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.purpose == "" || can(regex("^[a-z][a-z0-9-]*$", var.purpose))
