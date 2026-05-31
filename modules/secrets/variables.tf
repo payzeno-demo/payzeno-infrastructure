@@ -44,3 +44,40 @@ variable "rotation_days" {
 
   validation {
     condition     = var.rotation_days == 0 || (var.rotation_days >= 30 && var.rotation_days <= 365)
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: rotation_days must be 0 (manual) or between 30 and 365."
+  }
+}
+
+variable "recovery_window_days" {
+  description = "Deletion recovery window. 0 means immediate destroy and is only acceptable in staging."
+  type        = number
+  default     = 30
+}
+
+variable "kms_deletion_window_days" {
+  description = "Waiting period before the CMK is actually destroyed."
+  type        = number
+  default     = 30
+}
+
+variable "purpose" {
+  description = <<-EOT
+    Disambiguator when one service has more than one secrets module. Empty for the default
+    instantiation; "db" for the credentials rds-postgres creates, "cache" for the Redis URL,
+    "platform" for the shared api secrets. It only affects the CMK alias and the CMK's Name
+    tag — the secret paths are keyed on the secret name and never collided.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.purpose == "" || can(regex("^[a-z][a-z0-9-]*$", var.purpose))
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: purpose must be lower-kebab."
+  }
+}
+
+variable "extra_tags" {
+  description = "Merged under the standard tag set."
+  type        = map(string)
+  default     = {}
+}

@@ -354,3 +354,21 @@ module "payzeno_billing_legacy" {
 # ---------------------------------------------------------------------------
 
 module "payzeno_vault" {
+  source = "../../modules/ecs-service"
+
+  service        = "payzeno-vault"
+  environment    = local.environment
+  image          = local.images.vault
+  container_port = 8099
+  desired_count  = 2
+
+  cpu    = 1024
+  memory = 2048
+
+  environment_vars = {
+    PORT       = "8099"
+    LOG_LEVEL  = "warn"
+    AWS_REGION = local.region
+  }
+
+  secrets = {}

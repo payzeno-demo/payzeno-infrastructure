@@ -95,11 +95,28 @@ resource "aws_secretsmanager_secret_version" "placeholder" {
   }
 }
 
+resource "aws_secretsmanager_secret_rotation" "this" {
+  for_each = local.rotation_enabled ? local.secret_set : toset([])
+
+  secret_id           = aws_secretsmanager_secret.this[each.key].id
+  rotate_immediately  = false
+  rotation_lambda_arn = "arn:aws:lambda:eu-west-1:${data.aws_caller_identity.current.account_id}:function:payzeno-secret-rotator-${var.environment}"
+
+  rotation_rules {
+    automatically_after_days = var.rotation_days
+  }
+}
+
 data "aws_caller_identity" "current" {}
 
 # ---------------------------------------------------------------------------
 # Outputs. These stayed here when variables.tf was split out; see the note there.
 # ---------------------------------------------------------------------------
+
+output "secret_arns" {
+  description = "Map of logical secret name -> Secrets Manager ARN. Consumed by ecs-service's execution-role policy."
+  value       = { for n, s in aws_secretsmanager_secret.this : n => s.arn }
+}
 
 output "kms_key_arn" {
   description = "ARN of the per-service CMK. The execution role needs kms:Decrypt on it."
