@@ -72,3 +72,12 @@ variable "purpose" {
 
   validation {
     condition     = var.purpose == "" || can(regex("^[a-z][a-z0-9-]*$", var.purpose))
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: purpose must be lower-kebab."
+  }
+}
+
+variable "extra_tags" {
+  description = "Merged under the standard tag set."
+  type        = map(string)
+  default     = {}
+}
