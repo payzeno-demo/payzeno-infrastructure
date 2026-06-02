@@ -35,6 +35,18 @@ module "names" {
   extra_tags  = var.extra_tags
 }
 
+module "sidecar" {
+  source = "../nginx-sidecar"
+  count  = var.enable_nginx_sidecar ? 1 : 0
+
+  service        = var.service
+  environment    = var.environment
+  upstream_port  = var.container_port
+  config_key     = "${module.names.id}/nginx.conf"
+  listener_ports = [80, 8081]
+  extra_tags     = var.extra_tags
+}
+
 module "task_secrets" {
   source = "../secrets"
   count  = length(var.managed_secret_names) > 0 ? 1 : 0
@@ -49,6 +61,85 @@ module "task_secrets" {
   rotation_days = anytrue([for n in var.managed_secret_names : endswith(n, "_API_KEY")]) ? 0 : 90
   extra_tags    = var.extra_tags
 }
+
+locals {
+  # Per-service contracted env keys. variables.tf validates against the union of these
+  # (terraform 1.7 cannot reference var.service from a variable validation); the
+  # precondition below narrows it to the service actually being built.
+  allowed_env_keys = {
+    "payzeno-api" = [
+      "NODE_ENV", "PORT", "LOG_LEVEL", "AWS_REGION", "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "LEDGER_BASE_URL", "BILLING_LEGACY_BASE_URL", "BILLING_LEGACY_USER",
+      "VAULT_BASE_URL", "VAULT_PUBLIC_URL", "CSRF_COOKIE_NAME",
+      "SNS_PAYMENTS_TOPIC_ARN", "SNS_MERCHANT_TOPIC_ARN", "SQS_LEDGER_QUEUE_URL",
+      "SQS_API_WEBHOOKS_URL", "SQS_CONSOLE_NOTIFICATIONS_URL", "SQS_DLQ_URL",
+      "IDEMPOTENCY_BACKEND", "IDEMPOTENCY_TTL_HOURS", "IDEMPOTENCY_LEASE_SECONDS",
+      "RATE_LIMIT_DEFAULT_RPM", "WEBHOOK_MAX_ATTEMPTS", "WEBHOOK_RETRY_WINDOW_HOURS",
+      "PROCESSOR_DEFAULT_ACQUIRER", "REFUND_WINDOW_DAYS",
+      "WORLDFLOW_BASE_URL", "NORDPAY_BASE_URL",
+      "FLAG_LEDGER_OWNS_INVOICES", "FLAG_LEDGER_OWNS_FEES", "FLAG_REDACT_PAN_IN_LOGS",
+    ]
+    "payzeno-ledger" = [
+      "LOG_LEVEL", "AWS_REGION", "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "DATABASE_POOL_SIZE", "DATABASE_POOL_MAX_OVERFLOW",
+      "SNS_LEDGER_TOPIC_ARN", "SQS_PAYMENTS_QUEUE_URL", "SQS_MERCHANTS_QUEUE_URL",
+      "WORLDFLOW_BASE_URL", "WORLDFLOW_BREAKER_THRESHOLD_PCT", "WORLDFLOW_BREAKER_WINDOW",
+      "WORLDFLOW_BREAKER_RESET_SECONDS",
+      "NORDPAY_BASE_URL", "NORDPAY_BREAKER_THRESHOLD_PCT", "NORDPAY_BREAKER_WINDOW",
+      "NORDPAY_BREAKER_RESET_SECONDS",
+      "RECONCILE_SWEEP_INTERVAL_SECONDS", "RECONCILE_SWEEP_WALL_BUDGET_SECONDS",
+      "RECONCILE_MAX_ITEMS_PER_RUN", "RECONCILE_MAX_ATTEMPTS",
+      "RECONCILE_RETRY_BACKOFF_BASE_SECONDS",
+      "RETRY_DRAIN_INTERVAL_SECONDS", "RETRY_DRAIN_BATCH_SIZE", "RETRY_DRAIN_ENABLED",
+      "PAYOUT_CUTOFF_ACH_UTC", "PAYOUT_CUTOFF_SAME_DAY_ACH_UTC", "PAYOUT_CUTOFF_SEPA_UTC",
+      "PAYOUT_CUTOFF_FASTER_PAYMENTS_UTC",
+      "LEDGER_AUDIT_ENABLED", "SETTLEMENT_IMPORT_ENABLED", "FUNDING_MATCH_TOLERANCE_BPS",
+      "FLAG_RECONCILE_RETRY_BATCH_LOCK", "FLAG_DUPLICATE_SETTLEMENT_ALARM",
+      "FLAG_PAYOUT_SAME_DAY_ACH", "FLAG_REDACT_PAN_IN_LOGS",
+      "RECONCILE_RETRY_BATCH_LOCK",
+    ]
+    "payzeno-billing-legacy" = [
+      "LOG_LEVEL", "AWS_REGION", "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "SPRING_PROFILES_ACTIVE", "SPRING_DATASOURCE_URL", "SPRING_DATASOURCE_USERNAME",
+      "PAYZENO_LEDGER_BASE_URL", "PAYZENO_API_BASE_URL",
+      "BILLING_INVOICE_PREFIX", "BILLING_DUNNING_ENABLED", "BILLING_LEDGER_EXPORT_ENABLED",
+      "BILLING_FLAG_LEDGER_OWNS_INVOICES", "BILLING_FLAG_LEDGER_OWNS_FEES",
+    ]
+    # The vault is a vendor image (payzeno/card-vault). It takes PORT and LOG_LEVEL and
+    # nothing else; everything it needs is mounted, not passed.
+    "payzeno-vault" = ["PORT", "LOG_LEVEL", "AWS_REGION"]
+    "payzeno-nginx" = ["LOG_LEVEL"]
+  }
+
+  service_allowed_keys = lookup(local.allowed_env_keys, var.service, [])
+
+  unexpected_env_keys = [
+    for k in keys(var.environment_vars) : k
+    if !contains(local.service_allowed_keys, k)
+  ]
+
+  # var.secrets is what the caller hands in (DATABASE_URL from rds-postgres, REDIS_URL from
+  # the cache); module.task_secrets is what this module creates. The task definition needs
+  # the union, and iam.tf needs the union of their ARNs.
+  managed_secret_arns = length(module.task_secrets) > 0 ? module.task_secrets[0].secret_arns : {}
+  all_secret_arns     = merge(local.managed_secret_arns, var.secrets)
+
+  is_alb_fronted = var.alb_listener_arn != null
+
+  alarm_actions = var.pager_topic_arn == null ? [] : [var.pager_topic_arn]
+
+  cluster_name = element(split("/", var.cluster_arn), length(split("/", var.cluster_arn)) - 1)
+
+  # Alarm names are prefixed with the component when there is one. Without this the canary's
+  # three alarms collide with the main ledger service's — same service, same environment,
+  # same alarm name — and CloudWatch resolves a collision by letting the second apply
+  # silently overwrite the first. Found the hard way in month 5.
+  alarm_prefix = var.component == "" ? "" : "${var.component}-"
+}
+
+# ---------------------------------------------------------------------------
+# Network
+# ---------------------------------------------------------------------------
 
 resource "aws_security_group" "this" {
   name        = "${module.names.id}-sg"

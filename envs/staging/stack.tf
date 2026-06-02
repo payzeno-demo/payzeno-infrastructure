@@ -445,3 +445,17 @@ module "payzeno_vault" {
 
   log_retention_days = 14
 
+  autoscaling_min        = 1
+  autoscaling_max        = 2
+  autoscaling_target_cpu = 70
+
+  pager_topic_arn  = null
+  runbook_base_url = local.runbook_base_url
+}
+
+module "payzeno_nginx" {
+  source = "../../modules/nginx-sidecar"
+
+  service       = "payzeno-nginx"
+  environment   = local.environment
+  upstream_port = 8080

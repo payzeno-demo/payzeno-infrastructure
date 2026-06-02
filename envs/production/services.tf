@@ -372,3 +372,9 @@ module "payzeno_vault" {
   }
 
   secrets = {}
+
+  vpc_id      = local.vpc_id
+  subnet_ids  = local.subnet_ids
+  cluster_arn = aws_ecs_cluster.payzeno.arn
+
+  alb_listener_arn     = null
