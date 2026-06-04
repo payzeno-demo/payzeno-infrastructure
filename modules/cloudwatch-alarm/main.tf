@@ -121,3 +121,10 @@ variable "runbook_url" {
   type        = string
 
   validation {
+    condition     = length(var.runbook_url) > 0 && startswith(var.runbook_url, "https://")
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: runbook_url must be a non-empty https:// link. An alarm with no runbook is a page with no instructions."
+  }
+}
+
+variable "description" {
+  description = "Human sentence shown in the alarm body and in the pager notification."
