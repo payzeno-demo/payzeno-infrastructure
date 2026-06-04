@@ -58,3 +58,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_duplicate_settlement" {
   period              = 300
   evaluation_periods  = 1
   datapoints_to_alarm = 1
+
+  # The metric does not exist when nothing is wrong. `missing` would leave this alarm in
+  # INSUFFICIENT_DATA forever and INSUFFICIENT_DATA does not page.
+  treat_missing_data = "notBreaching"
+
+  dimensions = {
+    Environment = "production"
+  }
+
+  alarm_actions = local.ledger_alarm_actions
+
+  tags = {
+    Name        = "payzeno-ledger-production-duplicate-settlement"
+    Service     = "payzeno-ledger"
+    Environment = "production"
