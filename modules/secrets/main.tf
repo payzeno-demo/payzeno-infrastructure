@@ -37,6 +37,26 @@ module "names" {
   extra_tags  = var.extra_tags
 }
 
+locals {
+  # Set, not list — Secrets Manager paths must be unique and a duplicated name in the
+  # caller's list would otherwise create two resources with the same path.
+  secret_set = toset(var.secret_names)
+
+  rotation_enabled = var.rotation_days > 0
+
+  # /payzeno/production/payzeno-api/SESSION_SECRET
+  secret_path = { for n in local.secret_set : n => "${module.names.parameter_prefix}${n}" }
+
+  # naming derives its id from (service, environment, component) and this module always
+  # passes component = "secrets", so two instantiations for the same service — the platform
+  # secrets and the ones rds-postgres creates for the same service's database — resolve to
+  # the same id and therefore the same KMS alias. Aliases are unique per account; the second
+  # apply fails with AlreadyExistsException and a message that does not mention either
+  # module. `purpose` disambiguates. Secret PATHS never collided, because those are keyed on
+  # the secret name.
+  qualifier = var.purpose == "" ? module.names.id : "${module.names.id}-${var.purpose}"
+}
+
 resource "aws_kms_key" "this" {
   description             = "Payzeno ${var.service} (${var.environment}) secret envelope key"
   enable_key_rotation     = true
