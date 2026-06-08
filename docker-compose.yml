@@ -130,6 +130,7 @@ services:
       RECONCILE_SWEEP_INTERVAL_SECONDS: "900"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
+      RECONCILE_MAX_ATTEMPTS: "5"
       RECONCILE_RETRY_BACKOFF_BASE_SECONDS: "30"
 
       # false here and false on module.payzeno_ledger. It is true on exactly one thing in the
@@ -152,6 +153,8 @@ services:
       # settlement.duplicate_detected event — that publish is unconditional (interfaces.md §8).
       FLAG_DUPLICATE_SETTLEMENT_ALARM: "true"
       FLAG_PAYOUT_SAME_DAY_ACH: "false"
+      FLAG_REDACT_PAN_IN_LOGS: "true"
+
       LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
@@ -277,6 +280,7 @@ services:
       SERVICES: "sns,sqs,s3,kms,secretsmanager"
       DEBUG: "0"
       test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
+      interval: 10s
       timeout: 5s
       retries: 20
 
