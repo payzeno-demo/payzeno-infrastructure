@@ -58,6 +58,8 @@ services:
       INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
       BILLING_LEGACY_USER: payzeno-api
       BILLING_LEGACY_PASSWORD: dev-legacy-password
+      VAULT_API_KEY: dev-vault-key
+
       NORDPAY_API_KEY: dev-nordpay-key
       PROCESSOR_DEFAULT_ACQUIRER: worldflow
 
@@ -74,6 +76,10 @@ services:
       SQS_CONSOLE_NOTIFICATIONS_URL: http://payzeno-localstack:4566/000000000000/payzeno-console-notifications
       SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
 
+      # "postgres" locally, "database" in production — same backend, and the two spellings
+      # are a wart the api's config schema accepts on purpose. Staging says "redis", which is
+      # a real divergence and is called out in envs/staging/stack.tf.
+      IDEMPOTENCY_BACKEND: postgres
       IDEMPOTENCY_TTL_HOURS: "24"
       IDEMPOTENCY_LEASE_SECONDS: "90"
 
@@ -116,6 +122,7 @@ services:
       DATABASE_POOL_MAX_OVERFLOW: "10"
       INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
 
+      AWS_REGION: eu-west-1
       SQS_PAYMENTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-payments
       SQS_MERCHANTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-merchants
 
