@@ -459,3 +459,17 @@ module "payzeno_nginx" {
   service       = "payzeno-nginx"
   environment   = local.environment
   upstream_port = 8080
+  config_key    = "payzeno-nginx-staging/nginx.conf"
+
+  listener_ports = [80, 8081]
+}
+
+# ---------------------------------------------------------------------------
+# Data stores
+# ---------------------------------------------------------------------------
+
+module "db_api" {
+  source = "../../modules/rds-postgres"
+
+  service       = "payzeno-api"
+  environment   = local.environment

@@ -61,6 +61,7 @@ services:
       NORDPAY_API_KEY: dev-nordpay-key
       PROCESSOR_DEFAULT_ACQUIRER: worldflow
 
+      SESSION_SECRET: dev-session-secret-32-bytes-minimum-ok
       API_KEY_PEPPER: dev-api-key-pepper
       AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
@@ -79,6 +80,8 @@ services:
       RATE_LIMIT_DEFAULT_RPM: "600"
       WEBHOOK_MAX_ATTEMPTS: "8"
       WEBHOOK_RETRY_WINDOW_HOURS: "24"
+      REFUND_WINDOW_DAYS: "120"
+
       # arc MIG. Fees moved in month 3; invoices have not, and will not until
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
@@ -144,6 +147,10 @@ services:
 
       LEDGER_AUDIT_ENABLED: "true"
       SETTLEMENT_IMPORT_ENABLED: "true"
+      # Gates the CloudWatch custom metric Payzeno/Ledger DuplicateSettlementDetected, which
+      # is what envs/production/alarms_ledger.tf alarms on. It does NOT gate the
+      # settlement.duplicate_detected event — that publish is unconditional (interfaces.md §8).
+      FLAG_DUPLICATE_SETTLEMENT_ALARM: "true"
       FLAG_PAYOUT_SAME_DAY_ACH: "false"
       LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
