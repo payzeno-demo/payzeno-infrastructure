@@ -58,9 +58,12 @@ services:
       INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
       BILLING_LEGACY_USER: payzeno-api
       BILLING_LEGACY_PASSWORD: dev-legacy-password
+      VAULT_API_KEY: dev-vault-key
+
       NORDPAY_API_KEY: dev-nordpay-key
       PROCESSOR_DEFAULT_ACQUIRER: worldflow
 
+      SESSION_SECRET: dev-session-secret-32-bytes-minimum-ok
       API_KEY_PEPPER: dev-api-key-pepper
       AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
@@ -73,12 +76,18 @@ services:
       SQS_CONSOLE_NOTIFICATIONS_URL: http://payzeno-localstack:4566/000000000000/payzeno-console-notifications
       SQS_DLQ_URL: http://payzeno-localstack:4566/000000000000/payzeno-dlq-monitor
 
+      # "postgres" locally, "database" in production — same backend, and the two spellings
+      # are a wart the api's config schema accepts on purpose. Staging says "redis", which is
+      # a real divergence and is called out in envs/staging/stack.tf.
+      IDEMPOTENCY_BACKEND: postgres
       IDEMPOTENCY_TTL_HOURS: "24"
       IDEMPOTENCY_LEASE_SECONDS: "90"
 
       RATE_LIMIT_DEFAULT_RPM: "600"
       WEBHOOK_MAX_ATTEMPTS: "8"
       WEBHOOK_RETRY_WINDOW_HOURS: "24"
+      REFUND_WINDOW_DAYS: "120"
+
       # arc MIG. Fees moved in month 3; invoices have not, and will not until
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
@@ -113,6 +122,7 @@ services:
       DATABASE_POOL_MAX_OVERFLOW: "10"
       INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
 
+      AWS_REGION: eu-west-1
       SQS_PAYMENTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-payments
       SQS_MERCHANTS_QUEUE_URL: http://payzeno-localstack:4566/000000000000/payzeno-ledger-merchants
 
@@ -127,6 +137,7 @@ services:
       RECONCILE_SWEEP_INTERVAL_SECONDS: "900"
       RECONCILE_SWEEP_WALL_BUDGET_SECONDS: "30"
       RECONCILE_MAX_ITEMS_PER_RUN: "500"
+      RECONCILE_MAX_ATTEMPTS: "5"
       RECONCILE_RETRY_BACKOFF_BASE_SECONDS: "30"
 
       # false here and false on module.payzeno_ledger. It is true on exactly one thing in the
@@ -144,7 +155,13 @@ services:
 
       LEDGER_AUDIT_ENABLED: "true"
       SETTLEMENT_IMPORT_ENABLED: "true"
+      # Gates the CloudWatch custom metric Payzeno/Ledger DuplicateSettlementDetected, which
+      # is what envs/production/alarms_ledger.tf alarms on. It does NOT gate the
+      # settlement.duplicate_detected event — that publish is unconditional (interfaces.md §8).
+      FLAG_DUPLICATE_SETTLEMENT_ALARM: "true"
       FLAG_PAYOUT_SAME_DAY_ACH: "false"
+      FLAG_REDACT_PAN_IN_LOGS: "true"
+
       LOG_LEVEL: INFO
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4317
     depends_on:
@@ -270,6 +287,7 @@ services:
       SERVICES: "sns,sqs,s3,kms,secretsmanager"
       DEBUG: "0"
       test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
+      interval: 10s
       timeout: 5s
       retries: 20
 

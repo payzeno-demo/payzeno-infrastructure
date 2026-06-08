@@ -378,3 +378,16 @@ module "payzeno_vault" {
   cluster_arn = aws_ecs_cluster.payzeno.arn
 
   alb_listener_arn     = null
+  enable_nginx_sidecar = false
+
+  # Vault logs are cardholder-adjacent. 30 days, and PCI review signed off on exactly that.
+  log_retention_days = 30
+
+  autoscaling_min        = 2
+  autoscaling_max        = 4
+  autoscaling_target_cpu = 60
+
+  pager_topic_arn  = aws_sns_topic.payzeno_pager.arn
+  runbook_base_url = local.runbook_base_url
+}
+

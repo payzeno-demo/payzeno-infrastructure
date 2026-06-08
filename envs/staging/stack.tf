@@ -459,3 +459,31 @@ module "payzeno_nginx" {
   service       = "payzeno-nginx"
   environment   = local.environment
   upstream_port = 8080
+  config_key    = "payzeno-nginx-staging/nginx.conf"
+
+  listener_ports = [80, 8081]
+}
+
+# ---------------------------------------------------------------------------
+# Data stores
+# ---------------------------------------------------------------------------
+
+module "db_api" {
+  source = "../../modules/rds-postgres"
+
+  service       = "payzeno-api"
+  environment   = local.environment
+  database_name = "payzeno_api"
+
+  instance_class        = "db.t4g.medium"
+  allocated_storage     = 50
+  max_allocated_storage = 100
+  multi_az              = false
+
+  client_pool_size = 10
+  max_connections  = 100
+
+  performance_insights_enabled = false
+  backup_retention_days        = 1
+
+  vpc_id              = local.vpc_id
