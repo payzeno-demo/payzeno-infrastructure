@@ -142,3 +142,11 @@ resource "aws_elasticache_replication_group" "cache_api" {
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
 
+  # IDEMPOTENCY_BACKEND=redis means an idempotency lease lives here. Losing the cache loses
+  # in-flight leases, which is survivable (the api falls back to the database claim) but is
+  # not free — snapshots make a failover boring.
+  snapshot_retention_limit = 3
+  snapshot_window          = "03:00-04:00"
+  maintenance_window       = "sun:04:30-sun:05:30"
+
+  apply_immediately = false
