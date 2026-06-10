@@ -397,3 +397,9 @@ module "payzeno_vault" {
 # In compose, payzeno-nginx is a real container in front of everything. In AWS the ALB does
 # the fronting and each task carries its own sidecar, so this instantiation exists to render
 # and publish the SAME config object both planes read. It creates no ECS service.
+# ---------------------------------------------------------------------------
+
+module "payzeno_nginx" {
+  source = "../../modules/nginx-sidecar"
+
+  service       = "payzeno-nginx"

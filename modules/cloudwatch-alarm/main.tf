@@ -142,3 +142,10 @@ module "names" {
 
 locals {
   alarm_name = "${module.names.id}-${var.name}"
+
+  # The on-call reads this in Slack before they read anything else. Put the runbook in it.
+  alarm_description = join(" ", compact([
+    var.description != "" ? var.description : "${var.namespace} ${var.metric_name} breached in ${var.environment}.",
+    "Runbook: ${var.runbook_url}",
+  ]))
+}
