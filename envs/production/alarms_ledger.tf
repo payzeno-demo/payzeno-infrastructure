@@ -88,3 +88,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_duplicate_settlement" {
 # The duplicate alarm above catches the case where the ledger NOTICES. This one catches the
 # case where it does not: a batch that has posted more money than the acquirer said it should
 # have. On the night, this ratio was 1.34 for forty minutes.
+#
+# 1.001 rather than 1.0 because rounding on a large batch of minor units can land a few units
+# over and paging on four pence is how an alarm gets muted.
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "ledger_batch_overposted" {
+  alarm_name        = "payzeno-ledger-production-batch-overposted"
+  alarm_description = "A settlement batch has posted more than it was supposed to (posted_total_minor / expected_total_minor > 1.001). Either items are being settled twice or the acquirer file was reimported. Runbook: ${local.ledger_runbook}#duplicate-settlement"
+
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = 1.001
+  evaluation_periods  = 2
+  datapoints_to_alarm = 2
+  treat_missing_data  = "notBreaching"
+

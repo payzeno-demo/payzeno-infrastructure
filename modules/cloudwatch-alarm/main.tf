@@ -135,3 +135,10 @@ variable "description" {
 module "names" {
   source = "../naming"
 
+  service     = var.service
+  environment = var.environment
+  component   = "alarm"
+}
+
+locals {
+  alarm_name = "${module.names.id}-${var.name}"
