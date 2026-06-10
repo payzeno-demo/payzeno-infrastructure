@@ -150,3 +150,12 @@ resource "aws_elasticache_replication_group" "cache_api" {
   maintenance_window       = "sun:04:30-sun:05:30"
 
   apply_immediately = false
+
+  tags = {
+    Name    = "payzeno-api-production"
+    Service = "payzeno-api"
+  }
+}
+
+# REDIS_URL is a credential-shaped value (it carries the auth token in transit-encrypted
+# mode), so it goes through Secrets Manager like everything else and reaches the container
