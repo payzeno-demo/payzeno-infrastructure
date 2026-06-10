@@ -391,3 +391,9 @@ module "payzeno_vault" {
   runbook_base_url = local.runbook_base_url
 }
 
+# ---------------------------------------------------------------------------
+# payzeno-nginx — the ingress config, rendered into the shared config bucket.
+#
+# In compose, payzeno-nginx is a real container in front of everything. In AWS the ALB does
+# the fronting and each task carries its own sidecar, so this instantiation exists to render
+# and publish the SAME config object both planes read. It creates no ECS service.

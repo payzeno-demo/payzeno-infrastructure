@@ -167,3 +167,22 @@ resource "aws_db_instance" "this" {
   copy_tags_to_snapshot   = true
 
   performance_insights_enabled          = var.performance_insights_enabled
+  performance_insights_retention_period = var.performance_insights_enabled ? var.performance_insights_retention_days : null
+  enabled_cloudwatch_logs_exports       = ["postgresql", "upgrade"]
+  monitoring_interval                   = var.environment == "production" ? 15 : 60
+  monitoring_role_arn                   = var.monitoring_role_arn
+
+  auto_minor_version_upgrade = true
+  deletion_protection        = var.environment == "production"
+  skip_final_snapshot        = false
+  final_snapshot_identifier  = "${local.identifier}-final-${var.snapshot_suffix}"
+
+  # A parameter change that needs a reboot waits for the maintenance window unless you say
+  # otherwise. That is usually right and was wrong exactly once: the month-7 instance-class
+  # bump for the ledger sat pending for six days and everyone assumed it had applied.
+  apply_immediately = var.apply_immediately
+
+  tags = merge(module.names.tags, {
+    Name     = local.identifier
+    Database = var.database_name
+  })
