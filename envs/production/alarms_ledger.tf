@@ -73,3 +73,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_duplicate_settlement" {
     Name        = "payzeno-ledger-production-duplicate-settlement"
     Service     = "payzeno-ledger"
     Environment = "production"
+    Team        = "infra"
+    ManagedBy   = "terraform"
+    Repo        = "payzeno-infrastructure"
+    Ticket      = "PAY-2055"
+    Runbook     = "${local.ledger_runbook}#duplicate-settlement"
+    Severity    = "sev1"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Metric math: posted_total_minor / expected_total_minor > 1.001.
+#
+# The duplicate alarm above catches the case where the ledger NOTICES. This one catches the
+# case where it does not: a batch that has posted more money than the acquirer said it should
+# have. On the night, this ratio was 1.34 for forty minutes.

@@ -128,3 +128,10 @@ variable "runbook_url" {
 
 variable "description" {
   description = "Human sentence shown in the alarm body and in the pager notification."
+  type        = string
+  default     = ""
+}
+
+module "names" {
+  source = "../naming"
+
