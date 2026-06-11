@@ -103,3 +103,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_batch_overposted" {
   datapoints_to_alarm = 2
   treat_missing_data  = "notBreaching"
 
+  metric_query {
+    id          = "ratio"
+    expression  = "posted / expected"
+    label       = "posted_total_minor / expected_total_minor"
+    return_data = true
+  }
+
+  metric_query {
+    id = "posted"
+
+    metric {
+      namespace   = local.ledger_namespace
+      metric_name = "SettlementPostedTotalMinor"
+      stat        = "Sum"
+      period      = 300
