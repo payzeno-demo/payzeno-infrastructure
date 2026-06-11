@@ -159,3 +159,11 @@ resource "aws_elasticache_replication_group" "cache_api" {
 
 # REDIS_URL is a credential-shaped value (it carries the auth token in transit-encrypted
 # mode), so it goes through Secrets Manager like everything else and reaches the container
+# as an ARN.
+module "cache_api_secret" {
+  source = "../../modules/secrets"
+
+  service       = "payzeno-api"
+  environment   = local.environment
+  purpose       = "cache"
+  secret_names  = ["REDIS_URL"]

@@ -118,3 +118,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_batch_overposted" {
       metric_name = "SettlementPostedTotalMinor"
       stat        = "Sum"
       period      = 300
+
+      dimensions = {
+        Environment = "production"
+      }
+    }
+  }
+
+  metric_query {
+    id = "expected"
+
+    metric {
+      namespace   = local.ledger_namespace
+      metric_name = "SettlementExpectedTotalMinor"
+      stat        = "Sum"
+      period      = 300
