@@ -403,3 +403,9 @@ module "payzeno_nginx" {
   source = "../../modules/nginx-sidecar"
 
   service       = "payzeno-nginx"
+  environment   = local.environment
+  upstream_port = 8080
+  config_key    = "payzeno-nginx-production/nginx.conf"
+
+  listener_ports             = [80, 8081]
+  proxy_read_timeout_seconds = 60
