@@ -73,3 +73,78 @@ resource "aws_cloudwatch_metric_alarm" "ledger_duplicate_settlement" {
     Name        = "payzeno-ledger-production-duplicate-settlement"
     Service     = "payzeno-ledger"
     Environment = "production"
+    Team        = "infra"
+    ManagedBy   = "terraform"
+    Repo        = "payzeno-infrastructure"
+    Ticket      = "PAY-2055"
+    Runbook     = "${local.ledger_runbook}#duplicate-settlement"
+    Severity    = "sev1"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Metric math: posted_total_minor / expected_total_minor > 1.001.
+#
+# The duplicate alarm above catches the case where the ledger NOTICES. This one catches the
+# case where it does not: a batch that has posted more money than the acquirer said it should
+# have. On the night, this ratio was 1.34 for forty minutes.
+#
+# 1.001 rather than 1.0 because rounding on a large batch of minor units can land a few units
+# over and paging on four pence is how an alarm gets muted.
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "ledger_batch_overposted" {
+  alarm_name        = "payzeno-ledger-production-batch-overposted"
+  alarm_description = "A settlement batch has posted more than it was supposed to (posted_total_minor / expected_total_minor > 1.001). Either items are being settled twice or the acquirer file was reimported. Runbook: ${local.ledger_runbook}#duplicate-settlement"
+
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = 1.001
+  evaluation_periods  = 2
+  datapoints_to_alarm = 2
+  treat_missing_data  = "notBreaching"
+
+  metric_query {
+    id          = "ratio"
+    expression  = "posted / expected"
+    label       = "posted_total_minor / expected_total_minor"
+    return_data = true
+  }
+
+  metric_query {
+    id = "posted"
+
+    metric {
+      namespace   = local.ledger_namespace
+      metric_name = "SettlementPostedTotalMinor"
+      stat        = "Sum"
+      period      = 300
+
+      dimensions = {
+        Environment = "production"
+      }
+    }
+  }
+
+  metric_query {
+    id = "expected"
+
+    metric {
+      namespace   = local.ledger_namespace
+      metric_name = "SettlementExpectedTotalMinor"
+      stat        = "Sum"
+      period      = 300
+
+      dimensions = {
+        Environment = "production"
+      }
+    }
+  }
+
+  alarm_actions = local.ledger_alarm_actions
+
+  tags = {
+    Name        = "payzeno-ledger-production-batch-overposted"
+    Service     = "payzeno-ledger"
+    Environment = "production"
+    Team        = "infra"
+    ManagedBy   = "terraform"

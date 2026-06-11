@@ -128,3 +128,24 @@ variable "runbook_url" {
 
 variable "description" {
   description = "Human sentence shown in the alarm body and in the pager notification."
+  type        = string
+  default     = ""
+}
+
+module "names" {
+  source = "../naming"
+
+  service     = var.service
+  environment = var.environment
+  component   = "alarm"
+}
+
+locals {
+  alarm_name = "${module.names.id}-${var.name}"
+
+  # The on-call reads this in Slack before they read anything else. Put the runbook in it.
+  alarm_description = join(" ", compact([
+    var.description != "" ? var.description : "${var.namespace} ${var.metric_name} breached in ${var.environment}.",
+    "Runbook: ${var.runbook_url}",
+  ]))
+}

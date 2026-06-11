@@ -142,3 +142,37 @@ resource "aws_elasticache_replication_group" "cache_api" {
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
 
+  # IDEMPOTENCY_BACKEND=redis means an idempotency lease lives here. Losing the cache loses
+  # in-flight leases, which is survivable (the api falls back to the database claim) but is
+  # not free — snapshots make a failover boring.
+  snapshot_retention_limit = 3
+  snapshot_window          = "03:00-04:00"
+  maintenance_window       = "sun:04:30-sun:05:30"
+
+  apply_immediately = false
+
+  tags = {
+    Name    = "payzeno-api-production"
+    Service = "payzeno-api"
+  }
+}
+
+# REDIS_URL is a credential-shaped value (it carries the auth token in transit-encrypted
+# mode), so it goes through Secrets Manager like everything else and reaches the container
+# as an ARN.
+module "cache_api_secret" {
+  source = "../../modules/secrets"
+
+  service       = "payzeno-api"
+  environment   = local.environment
+  purpose       = "cache"
+  secret_names  = ["REDIS_URL"]
+  rotation_days = 0
+}
+
+# ---------------------------------------------------------------------------
+# Platform secrets. Everything a service needs that is not a database URL.
+# ---------------------------------------------------------------------------
+
+module "platform_secrets" {
+  source = "../../modules/secrets"

@@ -167,3 +167,41 @@ resource "aws_db_instance" "this" {
   copy_tags_to_snapshot   = true
 
   performance_insights_enabled          = var.performance_insights_enabled
+  performance_insights_retention_period = var.performance_insights_enabled ? var.performance_insights_retention_days : null
+  enabled_cloudwatch_logs_exports       = ["postgresql", "upgrade"]
+  monitoring_interval                   = var.environment == "production" ? 15 : 60
+  monitoring_role_arn                   = var.monitoring_role_arn
+
+  auto_minor_version_upgrade = true
+  deletion_protection        = var.environment == "production"
+  skip_final_snapshot        = false
+  final_snapshot_identifier  = "${local.identifier}-final-${var.snapshot_suffix}"
+
+  # A parameter change that needs a reboot waits for the maintenance window unless you say
+  # otherwise. That is usually right and was wrong exactly once: the month-7 instance-class
+  # bump for the ledger sat pending for six days and everyone assumed it had applied.
+  apply_immediately = var.apply_immediately
+
+  tags = merge(module.names.tags, {
+    Name     = local.identifier
+    Database = var.database_name
+  })
+
+  lifecycle {
+    precondition {
+      condition     = var.environment != "production" || var.multi_az
+      error_message = "PAYZENO_INFRA_PRECONDITION: production Postgres is multi-AZ. A single-AZ ledger database is a single-AZ money supply."
+    }
+
+    precondition {
+      # interfaces.md §3.1 rule 4. Every task holds a full pool; four tasks at
+      # DATABASE_POOL_SIZE=20 is 80 connections before the sweep jobs, migrations or a human
+      # with psql. The 3x is per-service, not per-task, and it has headroom baked in.
+      condition     = var.max_connections >= 3 * var.client_pool_size
+      error_message = "PAYZENO_INFRA_PRECONDITION: max_connections (${var.max_connections}) must be at least 3 x the service's DATABASE_POOL_SIZE (${var.client_pool_size} => ${3 * var.client_pool_size}). Running out of connections on the ledger looks like a slow application and is diagnosed as one, for about an hour."
+    }
+
+    precondition {
+      condition     = var.environment != "production" || var.backup_retention_days >= 14
+      error_message = "PAYZENO_INFRA_PRECONDITION: production keeps at least 14 days of backups. A duplicate-settlement investigation reaches back further than seven days — we know, we did one."
+    }
