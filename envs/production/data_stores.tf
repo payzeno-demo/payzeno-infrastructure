@@ -167,3 +167,12 @@ module "cache_api_secret" {
   environment   = local.environment
   purpose       = "cache"
   secret_names  = ["REDIS_URL"]
+  rotation_days = 0
+}
+
+# ---------------------------------------------------------------------------
+# Platform secrets. Everything a service needs that is not a database URL.
+# ---------------------------------------------------------------------------
+
+module "platform_secrets" {
+  source = "../../modules/secrets"

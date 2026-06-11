@@ -133,3 +133,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_batch_overposted" {
       metric_name = "SettlementExpectedTotalMinor"
       stat        = "Sum"
       period      = 300
+
+      dimensions = {
+        Environment = "production"
+      }
+    }
+  }
+
+  alarm_actions = local.ledger_alarm_actions
+
+  tags = {
+    Name        = "payzeno-ledger-production-batch-overposted"
+    Service     = "payzeno-ledger"
+    Environment = "production"
+    Team        = "infra"
+    ManagedBy   = "terraform"
