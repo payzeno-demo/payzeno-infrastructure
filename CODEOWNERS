@@ -15,3 +15,21 @@
 # service team adding an env var lands it here and in envs/*/services.tf in
 # the same PR. Both need the infra review.
 /docker-compose.yml                 @payzeno/infrastructure @apager
+/docker-compose.override.yml        @payzeno/infrastructure @apager
+
+# --- ingress ---------------------------------------------------------------
+# nginx carries the ^/internal/ deny and the PCI log-format rules, so the CTO
+# is on it as well as infra.
+/nginx/                             @payzeno/infrastructure @apager @dhotfix
+/nginx/payzeno-console.conf         @payzeno/infrastructure @apager @tflexbox
+
+# --- terraform modules -----------------------------------------------------
+/modules/                           @payzeno/infrastructure @apager
+/modules/naming/                    @apager @dhotfix
+/modules/ecs-service/               @apager @dhotfix
+/modules/secrets/                   @apager @dhotfix
+/modules/alb-listener-rule/         @apager @dhotfix
+/modules/rds-postgres/              @apager @nmigration
+/modules/static-site/               @apager @tflexbox
+
+# modules/rds-mysql is pre-convention and load-bearing. @hlegacy is the only

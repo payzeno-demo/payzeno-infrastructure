@@ -99,6 +99,26 @@ everything else wrong with it; that one is a real ticket and has been for a whil
 
 ---
 
+## 5. Adding an environment variable
+
+This is the most common change in the repo and it is the easiest one to do half of.
+
+1. Add the name to `docker-compose.yml` under the service's `environment:`.
+2. Add the same name to `environment_vars` in `envs/production/services.tf` **and**
+   `envs/staging/stack.tf`.
+3. If it is a credential, it goes in `secrets` instead, backed by `modules/secrets` —
+   never in `environment_vars`.
+4. Add it to the allowed-key list in `modules/ecs-service/variables.tf`, or the validation
+   will reject your own change.
+5. Your service repo reads it through its one config module, and its `.env.example` gets it
+   too. An env var nothing reads is dead weight; delete it when the code that read it goes.
+
+Staging-only values are fine, but say so in a comment on the line. Production-only values
+are almost always a mistake — if production has a key staging does not, staging is not
+testing production.
+
+---
+
 ## 6. Things that need a conversation first
 
 Open a ticket and talk to infra before you write the PR:
