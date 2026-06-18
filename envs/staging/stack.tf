@@ -487,3 +487,17 @@ module "db_api" {
   backup_retention_days        = 1
 
   vpc_id              = local.vpc_id
+  subnet_ids          = local.subnet_ids
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+
+  alarm_actions    = []
+  runbook_base_url = local.runbook_base_url
+}
+
+module "db_ledger" {
+  source = "../../modules/rds-postgres"
+
+  service       = "payzeno-ledger"
+  environment   = local.environment
+  database_name = "payzeno_ledger"
+
