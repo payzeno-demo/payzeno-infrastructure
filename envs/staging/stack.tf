@@ -515,3 +515,17 @@ module "db_ledger" {
   performance_insights_enabled = false
   backup_retention_days        = 1
 
+  vpc_id              = local.vpc_id
+  subnet_ids          = local.subnet_ids
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+
+  alarm_actions    = []
+  runbook_base_url = local.runbook_base_url
+}
+
+# Same pre-convention module as production. env_suffix is the only thing that distinguishes
+# them, and it only reaches the instance identifier — the subnet group, parameter group and
+# security group this creates are all still named "...-prod". Staging is a separate account,
+# which is the only reason that works.
+#
+# do not delete until MIG step 5 — PAY-1522. Yes, in staging too. That near-miss was here.
