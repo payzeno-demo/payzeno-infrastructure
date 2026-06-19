@@ -487,3 +487,45 @@ module "db_api" {
   backup_retention_days        = 1
 
   vpc_id              = local.vpc_id
+  subnet_ids          = local.subnet_ids
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+
+  alarm_actions    = []
+  runbook_base_url = local.runbook_base_url
+}
+
+module "db_ledger" {
+  source = "../../modules/rds-postgres"
+
+  service       = "payzeno-ledger"
+  environment   = local.environment
+  database_name = "payzeno_ledger"
+
+  instance_class        = "db.t4g.medium"
+  allocated_storage     = 50
+  max_allocated_storage = 200
+  multi_az              = false
+
+  # Pool is 10 here, not production's 20 — one task, and t4g.medium does not have the memory
+  # for production's connection budget. The 3x rule still holds; it is the rule, not the
+  # number, that is contracted.
+  client_pool_size = 10
+  max_connections  = 100
+
+  performance_insights_enabled = false
+  backup_retention_days        = 1
+
+  vpc_id              = local.vpc_id
+  subnet_ids          = local.subnet_ids
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+
+  alarm_actions    = []
+  runbook_base_url = local.runbook_base_url
+}
+
+# Same pre-convention module as production. env_suffix is the only thing that distinguishes
+# them, and it only reaches the instance identifier — the subnet group, parameter group and
+# security group this creates are all still named "...-prod". Staging is a separate account,
+# which is the only reason that works.
+#
+# do not delete until MIG step 5 — PAY-1522. Yes, in staging too. That near-miss was here.
