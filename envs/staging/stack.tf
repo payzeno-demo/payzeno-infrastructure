@@ -501,3 +501,17 @@ module "db_ledger" {
   environment   = local.environment
   database_name = "payzeno_ledger"
 
+  instance_class        = "db.t4g.medium"
+  allocated_storage     = 50
+  max_allocated_storage = 200
+  multi_az              = false
+
+  # Pool is 10 here, not production's 20 — one task, and t4g.medium does not have the memory
+  # for production's connection budget. The 3x rule still holds; it is the rule, not the
+  # number, that is contracted.
+  client_pool_size = 10
+  max_connections  = 100
+
+  performance_insights_enabled = false
+  backup_retention_days        = 1
+
