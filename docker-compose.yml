@@ -60,6 +60,7 @@ services:
       BILLING_LEGACY_PASSWORD: dev-legacy-password
       VAULT_API_KEY: dev-vault-key
 
+      WORLDFLOW_API_KEY: dev-worldflow-key
       NORDPAY_API_KEY: dev-nordpay-key
       PROCESSOR_DEFAULT_ACQUIRER: worldflow
 
@@ -155,6 +156,8 @@ services:
 
       LEDGER_AUDIT_ENABLED: "true"
       SETTLEMENT_IMPORT_ENABLED: "true"
+      FUNDING_MATCH_TOLERANCE_BPS: "5"
+
       # Gates the CloudWatch custom metric Payzeno/Ledger DuplicateSettlementDetected, which
       # is what envs/production/alarms_ledger.tf alarms on. It does NOT gate the
       # settlement.duplicate_detected event — that publish is unconditional (interfaces.md §8).
@@ -286,6 +289,11 @@ services:
       # runtime with a connection error nobody attributes to a comma.
       SERVICES: "sns,sqs,s3,kms,secretsmanager"
       DEBUG: "0"
+      AWS_DEFAULT_REGION: eu-west-1
+    volumes: ["payzeno-localstack-data:/var/lib/localstack"]
+    # The topics, queues and subscriptions are created by init-aws.sh, which the override
+    # file drops into /etc/localstack/init/ready.d. `make seed` re-runs it.
+    healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
       interval: 10s
       timeout: 5s

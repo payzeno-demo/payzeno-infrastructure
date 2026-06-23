@@ -26,6 +26,24 @@ services:
   # -------------------------------------------------------------------------
   payzeno-acquirer-sandbox:
     image: payzeno/acquirer-sandbox:1.4
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9100/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # -------------------------------------------------------------------------
+  # nginx. Two things the base file cannot express:
+  #
+  #   1. nginx/nginx.conf ends with `include /etc/nginx/conf.d/payzeno-*.conf`, and the stock
+  #      image's own `include /etc/nginx/conf.d/*.conf` would reach those files a second
+  #      time — duplicate `upstream` blocks, and nginx refuses to start. The main config
+  #      below loads our http fragment and nothing else, so exactly one include fires.
+  #      On the ECS path this does not arise: modules/nginx-sidecar renders a single file.
+  #   2. payzeno-console.conf serves /srv/console. The console container builds the bundle
+  #      into /usr/share/nginx/html; the shared named volume below is how nginx gets it.
+  # -------------------------------------------------------------------------
+  payzeno-nginx:
     volumes:
       - ./nginx:/etc/nginx/conf.d:ro
       - payzeno-console-dist:/srv/console:ro
