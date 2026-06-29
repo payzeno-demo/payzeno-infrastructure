@@ -176,3 +176,11 @@ module "cache_api_secret" {
 
 module "platform_secrets" {
   source = "../../modules/secrets"
+
+  service     = "payzeno-api"
+  environment = local.environment
+  purpose     = "platform"
+
+  secret_names = [
+    "SESSION_SECRET",
+    "API_KEY_PEPPER",

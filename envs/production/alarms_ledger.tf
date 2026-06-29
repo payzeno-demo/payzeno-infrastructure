@@ -148,3 +148,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_batch_overposted" {
     Environment = "production"
     Team        = "infra"
     ManagedBy   = "terraform"
+    Repo        = "payzeno-infrastructure"
+    Ticket      = "PAY-2055"
+    Runbook     = "${local.ledger_runbook}#duplicate-settlement"
+    Severity    = "sev1"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Reconciliation lag.
+#
+# ReconciliationOldestPendingItemAgeSeconds — how old the oldest item in a RETRYABLE status
+# is. Two hours means the sweep is not keeping up, which is the precondition for everything
+# else in this file: a large retryable backlog is what makes a sweep and a drain overlap on
+# the same item in the first place.
+#
