@@ -28,6 +28,54 @@ resource "aws_kms_key" "bus" {
   }
 }
 
+resource "aws_kms_alias" "bus" {
+  name          = "alias/payzeno-staging-bus"
+  target_key_id = aws_kms_key.bus.key_id
+}
+
+# ---------------------------------------------------------------------------
+# Topics
+# ---------------------------------------------------------------------------
+
+module "topic_payments_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-payments-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
+module "topic_merchant_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-merchant-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
+module "q_api_ledger" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-api-ledger"
+  environment = local.environment
+  topic_arn   = module.topic_ledger_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "settlement.completed",
+      "settlement.duplicate_detected",
+      "settlement.variance_detected",
+      "payout.paid",
+      "payout.failed",
+      "payout.returned",
+      "ledger.imbalance_detected",
+    ]
+  }
+
+  visibility_timeout    = 120
+  depth_alarm_threshold = 200
+}
+
 module "q_api_webhooks" {
   source = "../../modules/sqs-queue"
 
@@ -104,6 +152,25 @@ resource "aws_sns_topic_subscription" "console_notifications_payments" {
   })
 }
 
+module "q_billing_merchants" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-billing-merchants"
+  environment = local.environment
+  topic_arn   = module.topic_merchant_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "merchant.created",
+      "merchant.updated",
+      "merchant.status_changed",
+    ]
+  }
+
+  visibility_timeout    = 120
+  depth_alarm_threshold = 100
+}
+
 module "q_dlq_monitor" {
   source = "../../modules/sqs-queue"
 
@@ -125,3 +192,12 @@ module "q_dlq_monitor" {
 #
 # module "q_api_support_tasks" { ... }  <- deleted, PAY-2131
 
+output "topic_arns" {
+  description = "Staging topic ARNs, consumed by stack.tf's service env vars."
+  value = {
+    payments = module.topic_payments_events.topic_arn
+    ledger   = module.topic_ledger_events.topic_arn
+    merchant = module.topic_merchant_events.topic_arn
+    billing  = module.topic_billing_events.topic_arn
+  }
+}
