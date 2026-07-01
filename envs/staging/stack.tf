@@ -542,3 +542,17 @@ resource "aws_elasticache_subnet_group" "cache_api" {
   subnet_ids = local.subnet_ids
 }
 
+resource "aws_security_group" "cache_api" {
+  name        = "payzeno-api-staging-cache-sg"
+  description = "Redis for payzeno-api"
+  vpc_id      = local.vpc_id
+
+  tags = {
+    Name = "payzeno-api-staging-cache-sg"
+  }
+}
+
+resource "aws_elasticache_replication_group" "cache_api" {
+  replication_group_id = "payzeno-api-staging"
+  description          = "payzeno-api idempotency store and rate-limit counters (staging)"
+
