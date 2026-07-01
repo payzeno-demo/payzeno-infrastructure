@@ -28,6 +28,23 @@ resource "aws_kms_key" "bus" {
   }
 }
 
+resource "aws_kms_alias" "bus" {
+  name          = "alias/payzeno-staging-bus"
+  target_key_id = aws_kms_key.bus.key_id
+}
+
+# ---------------------------------------------------------------------------
+# Topics
+# ---------------------------------------------------------------------------
+
+module "topic_payments_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-payments-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
 module "q_api_webhooks" {
   source = "../../modules/sqs-queue"
 
@@ -102,6 +119,25 @@ resource "aws_sns_topic_subscription" "console_notifications_payments" {
   filter_policy = jsonencode({
     event_type = ["dispute.opened"]
   })
+}
+
+module "q_billing_merchants" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-billing-merchants"
+  environment = local.environment
+  topic_arn   = module.topic_merchant_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "merchant.created",
+      "merchant.updated",
+      "merchant.status_changed",
+    ]
+  }
+
+  visibility_timeout    = 120
+  depth_alarm_threshold = 100
 }
 
 module "q_dlq_monitor" {

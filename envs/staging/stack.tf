@@ -529,3 +529,16 @@ module "db_ledger" {
 # which is the only reason that works.
 #
 # do not delete until MIG step 5 — PAY-1522. Yes, in staging too. That near-miss was here.
+module "db_billing" {
+  source = "../../modules/rds-mysql"
+
+  database_name  = "payzeno_billing"
+  instance_class = "db.t4g.medium"
+  env_suffix     = "stg"
+}
+
+resource "aws_elasticache_subnet_group" "cache_api" {
+  name       = "payzeno-api-staging-cache"
+  subnet_ids = local.subnet_ids
+}
+
