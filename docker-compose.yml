@@ -115,6 +115,7 @@ services:
     ports: ["8000:8000"]
     environment:
       DATABASE_URL: postgresql+asyncpg://payzeno:payzeno@payzeno-postgres-ledger:5432/payzeno_ledger
+      DATABASE_POOL_SIZE: "20"
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
       NORDPAY_BASE_URL: http://payzeno-acquirer-sandbox:9101
 
@@ -213,6 +214,7 @@ services:
       VITE_WS_URL: ws://localhost/ws/notifications
       VITE_VAULT_PUBLIC_URL: http://localhost:8099/public
       VITE_ENVIRONMENT: local
+      VITE_FEATURE_SETTLEMENT_EXPLORER: "true"
       VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
     depends_on: [payzeno-api]
 
@@ -236,6 +238,7 @@ services:
     volumes: ["payzeno-postgres-api-data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
+      timeout: 3s
       retries: 20
 
   payzeno-postgres-ledger:

@@ -69,6 +69,16 @@ services:
     ports:
       - "8090:8090"
       - "5005:5005"       # JDWP
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+volumes:
+  payzeno-console-dist:
+
+configs:
+  # A minimal main config whose http block loads nginx/nginx.conf and nothing else. See the
+  # payzeno-nginx note above for why the stock one does not work here.
+  nginx-main:
     content: |
       worker_processes auto;
       error_log /var/log/nginx/error.log notice;
