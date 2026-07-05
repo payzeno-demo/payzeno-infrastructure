@@ -372,6 +372,15 @@ locals {
   ]
 }
 
+check "every_contracted_queue_is_subscribed" {
+  assert {
+    condition = alltrue([
+      for name, arn in local.single_subscription_queues : arn != null
+    ])
+    error_message = "PAYZENO_INFRA_DRIFT: a contracted queue lost its topic subscription. A queue with no subscription is a consumer that runs, reports healthy, and receives nothing."
+  }
+}
+
 check "console_notifications_has_two_subscriptions" {
   assert {
     condition = alltrue([

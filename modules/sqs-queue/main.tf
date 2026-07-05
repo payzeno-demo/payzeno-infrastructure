@@ -152,3 +152,18 @@ data "aws_iam_policy_document" "queue" {
         test     = "ArnEquals"
         variable = "aws:SourceArn"
         values   = local.delivering_topic_arns
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = length(var.consumer_role_arns) > 0 ? [1] : []
+
+    content {
+      sid    = "AllowConsumer"
+      effect = "Allow"
+      actions = [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:GetQueueAttributes",
