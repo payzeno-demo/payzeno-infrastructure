@@ -116,6 +116,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://payzeno:payzeno@payzeno-postgres-ledger:5432/payzeno_ledger
       DATABASE_POOL_SIZE: "20"
+      AWS_ENDPOINT_URL: http://payzeno-localstack:4566
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
       NORDPAY_BASE_URL: http://payzeno-acquirer-sandbox:9101
 
@@ -130,6 +131,7 @@ services:
 
       WORLDFLOW_API_KEY: sandbox_wf_0000000000000000
       WORLDFLOW_BREAKER_THRESHOLD_PCT: "50"
+      WORLDFLOW_BREAKER_WINDOW: "100"
       WORLDFLOW_BREAKER_RESET_SECONDS: "30"
       NORDPAY_API_KEY: sandbox_np_0000000000000000
       NORDPAY_BREAKER_THRESHOLD_PCT: "50"
@@ -185,6 +187,7 @@ services:
       PAYZENO_API_BASE_URL: http://payzeno-api:8080
 
       SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_USERNAME: payzeno
       SPRING_DATASOURCE_PASSWORD: payzeno
       PAYZENO_INTERNAL_SECRET: dev-internal-secret-do-not-use-in-prod
 
