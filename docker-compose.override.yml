@@ -26,6 +26,15 @@ services:
   # -------------------------------------------------------------------------
   payzeno-acquirer-sandbox:
     image: payzeno/acquirer-sandbox:1.4
+    environment:
+      SANDBOX_WORLDFLOW_PORT: "9100"
+      SANDBOX_NORDPAY_PORT: "9101"
+      # Deterministic declines: the last four of the PAN pick the decline_code, so
+      # tests/acquirer fixtures do not need a recorded cassette per case.
+      SANDBOX_DETERMINISTIC_DECLINES: "true"
+      # 0 by default. Set it to 2000 and the ledger's circuit breakers actually trip, which
+      # is the only way to exercise WORLDFLOW_BREAKER_* without waiting for a real outage.
+      SANDBOX_LATENCY_MS: "0"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9100/healthz"]
       interval: 10s
