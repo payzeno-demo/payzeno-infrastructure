@@ -37,6 +37,12 @@ variable "allocated_storage" {
   default     = 100
 }
 
+variable "max_allocated_storage" {
+  description = "Storage autoscaling ceiling in GiB. Must be above allocated_storage or autoscaling is off."
+  type        = number
+  default     = 500
+}
+
 variable "multi_az" {
   description = "Multi-AZ failover. Forced true in production by a precondition in main.tf."
   type        = bool
@@ -61,6 +67,17 @@ variable "performance_insights_enabled" {
   default     = false
 }
 
+variable "performance_insights_retention_days" {
+  description = "7 (free tier) or 731 (two years). The ledger is on 731 so a settlement-window regression can be compared against the same week last year."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = contains([7, 31, 93, 186, 372, 731], var.performance_insights_retention_days)
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: performance_insights_retention_days must be 7, 31, 93, 186, 372 or 731. Anything else is silently rounded by the API."
+  }
+}
+
 variable "backup_retention_days" {
   description = "Automated backup retention. Production keeps 14 minimum (precondition); staging keeps 1."
   type        = number
@@ -71,6 +88,12 @@ variable "master_username" {
   description = "Master user. The password is RDS-managed and terraform never holds it."
   type        = string
   default     = "payzeno"
+}
+
+variable "rotation_days" {
+  description = "Rotation window for the DATABASE_URL / DATABASE_PASSWORD secrets this module creates."
+  type        = number
+  default     = 90
 }
 
 variable "vpc_id" {
@@ -88,6 +111,12 @@ variable "monitoring_role_arn" {
   description = "Enhanced-monitoring role ARN. One per account, created outside this module."
   type        = string
   default     = null
+}
+
+variable "snapshot_suffix" {
+  description = "Suffix on the final snapshot identifier. Bump it if you ever need to destroy and recreate with the same name; RDS refuses to reuse a snapshot id."
+  type        = string
+  default     = "v1"
 }
 
 variable "connections_alarm_fraction" {

@@ -184,3 +184,12 @@ module "platform_secrets" {
   secret_names = [
     "SESSION_SECRET",
     "API_KEY_PEPPER",
+    "INTERNAL_API_SECRET",
+    "VAULT_API_KEY",
+    "WORLDFLOW_API_KEY",
+    "NORDPAY_API_KEY",
+    "BILLING_LEGACY_PASSWORD",
+  ]
+
+  # Zero, deliberately. WORLDFLOW_API_KEY and NORDPAY_API_KEY are rotated by hand with the
+  # acquirer on the phone — they issue the new key, we deploy it, they revoke the old one,
