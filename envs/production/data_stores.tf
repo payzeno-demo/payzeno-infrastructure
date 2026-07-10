@@ -193,3 +193,11 @@ module "platform_secrets" {
 
   # Zero, deliberately. WORLDFLOW_API_KEY and NORDPAY_API_KEY are rotated by hand with the
   # acquirer on the phone — they issue the new key, we deploy it, they revoke the old one,
+  # and an automated rotation would revoke a key mid-settlement. INTERNAL_API_SECRET is
+  # rotated by hand too because five services read it and there is no coordinated cutover.
+  rotation_days = 0
+}
+
+# The webhook signing KEK. A raw resource with its own key rather than part of
+# module.platform_secrets, because it is an *envelope* key: webhook_endpoint.secret_ciphertext
+# rows in payzeno_api are encrypted under it, so rotating it means re-wrapping every merchant
