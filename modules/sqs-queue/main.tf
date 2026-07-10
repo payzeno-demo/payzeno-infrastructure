@@ -167,3 +167,18 @@ data "aws_iam_policy_document" "queue" {
         "sqs:DeleteMessage",
         "sqs:ChangeMessageVisibility",
         "sqs:GetQueueAttributes",
+      ]
+      resources = [aws_sqs_queue.this.arn]
+
+      principals {
+        type        = "AWS"
+        identifiers = var.consumer_role_arns
+      }
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "this" {
+  queue_url = aws_sqs_queue.this.id
+  policy    = data.aws_iam_policy_document.queue.json
+}

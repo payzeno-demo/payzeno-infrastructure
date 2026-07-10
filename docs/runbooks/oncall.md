@@ -198,6 +198,28 @@ do not raise it in the console, because the next apply will put it back.
 
 ---
 
+## service-cpu-high
+
+**Alarm:** `*-cpu-high`.
+
+Above 85% for five minutes. Autoscaling should already be reacting — check that it is:
+
+```bash
+aws application-autoscaling describe-scaling-activities \
+  --service-namespace ecs \
+  --resource-id service/$CLUSTER/$SVC --max-results 5
+```
+
+If it is at `autoscaling_max`, raise the max in a PR. If it is *not* scaling, the scalable
+target has probably been pinned by hand during a previous incident and never unpinned — see
+the end of [scale the ledger to one task](#scale-the-ledger-to-one-task).
+
+For the ledger specifically: CPU is a poor proxy for its load, because its work is a queue
+backlog and a blocked task is an idle task. On the night of PAY-2041 the ledger was 4,113
+items behind and CPU said everything was fine. That is PAY-1912.
+
+---
+
 ## database-cpu-high
 
 **Alarm:** `*-db-cpu-high`.
