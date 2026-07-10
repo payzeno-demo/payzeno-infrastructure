@@ -166,6 +166,36 @@ module "q_ledger_merchants" {
 # Queues — payzeno-api consumers
 # ---------------------------------------------------------------------------
 
+module "q_api_ledger" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-api-ledger"
+  environment = local.environment
+  topic_arn   = module.topic_ledger_events.topic_arn
+
+  # LedgerEventsConsumer (payzeno-api). settlement.duplicate_detected was added to this list
+  # by PAY-2055 — the consumer now writes an audit_log row and opens a support task when the
+  # charge has capture_at_settlement.
+  filter_policy = {
+    event_type = [
+      "settlement.completed",
+      "settlement.duplicate_detected",
+      "settlement.variance_detected",
+      "payout.paid",
+      "payout.failed",
+      "payout.returned",
+      "ledger.imbalance_detected",
+    ]
+  }
+
+  visibility_timeout          = 120
+  age_alarm_threshold_seconds = 300
+  depth_alarm_threshold       = 1000
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
 module "q_api_webhooks" {
   source = "../../modules/sqs-queue"
 

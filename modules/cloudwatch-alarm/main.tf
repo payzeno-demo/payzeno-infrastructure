@@ -149,3 +149,10 @@ locals {
     "Runbook: ${var.runbook_url}",
   ]))
 }
+
+resource "aws_cloudwatch_metric_alarm" "this" {
+  alarm_name          = local.alarm_name
+  alarm_description   = local.alarm_description
+  namespace           = var.namespace
+  metric_name         = var.metric_name
+  statistic           = var.extended_statistic == null ? var.statistic : null
