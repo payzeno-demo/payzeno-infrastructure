@@ -193,3 +193,37 @@ module "platform_secrets" {
 
   # Zero, deliberately. WORLDFLOW_API_KEY and NORDPAY_API_KEY are rotated by hand with the
   # acquirer on the phone — they issue the new key, we deploy it, they revoke the old one,
+  # and an automated rotation would revoke a key mid-settlement. INTERNAL_API_SECRET is
+  # rotated by hand too because five services read it and there is no coordinated cutover.
+  rotation_days = 0
+}
+
+# The webhook signing KEK. A raw resource with its own key rather than part of
+# module.platform_secrets, because it is an *envelope* key: webhook_endpoint.secret_ciphertext
+# rows in payzeno_api are encrypted under it, so rotating it means re-wrapping every merchant
+# endpoint secret. That is a migration, not a rotation, and it must not be able to happen by
+# accident. Created month 5, arc PCI.
+resource "aws_kms_key" "webhook_signing" {
+  description             = "Envelope key for payzeno_api.webhook_endpoint secrets (production)"
+  enable_key_rotation     = false
+  deletion_window_in_days = 30
+
+  tags = {
+    Name    = "payzeno-production-webhook-signing"
+    Service = "payzeno-api"
+    Note    = "rotating this re-wraps every merchant webhook secret. PAY-1699."
+  }
+}
+
+resource "aws_kms_alias" "webhook_signing" {
+  name          = "alias/payzeno-production-webhook-signing"
+  target_key_id = aws_kms_key.webhook_signing.key_id
+}
+
+resource "aws_secretsmanager_secret" "webhook_signing_kek" {
+  name        = "/payzeno/production/payzeno-api/WEBHOOK_SIGNING_KEK"
+  description = "Base64 KEK wrapping webhook_endpoint.secret_ciphertext. Rotation is a re-wrap migration — see PAY-1699 and docs/runbooks/oncall.md."
+  kms_key_id  = aws_kms_key.webhook_signing.arn
+
+  recovery_window_in_days = 30
+

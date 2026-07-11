@@ -556,3 +556,87 @@ resource "aws_elasticache_replication_group" "cache_api" {
   replication_group_id = "payzeno-api-staging"
   description          = "payzeno-api idempotency store and rate-limit counters (staging)"
 
+  engine         = "redis"
+  engine_version = "7.1"
+  node_type      = "cache.t4g.micro"
+  port           = 6379
+
+  num_cache_clusters         = 1
+  automatic_failover_enabled = false
+  multi_az_enabled           = false
+
+  subnet_group_name  = aws_elasticache_subnet_group.cache_api.name
+  security_group_ids = [aws_security_group.cache_api.id]
+
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+
+  snapshot_retention_limit = 0
+
+  tags = {
+    Name = "payzeno-api-staging"
+  }
+}
+
+module "cache_api_secret" {
+  source = "../../modules/secrets"
+
+  service       = "payzeno-api"
+  environment   = local.environment
+  purpose       = "cache"
+  secret_names  = ["REDIS_URL"]
+  rotation_days = 0
+
+  # Staging secrets are recreated often enough that a 30-day recovery window means the next
+  # apply collides with a scheduled-for-deletion name. Zero is only acceptable here.
+  recovery_window_days     = 0
+  kms_deletion_window_days = 7
+}
+
+module "platform_secrets" {
+  source = "../../modules/secrets"
+
+  service     = "payzeno-api"
+  environment = local.environment
+  purpose     = "platform"
+
+  # WEBHOOK_SIGNING_KEK is in this list here but is a standalone resource with its own CMK in
+  # production, because rotating it there re-wraps every merchant's webhook secret. In
+  # staging there are eleven test endpoints and nobody minds.
+  secret_names = [
+    "SESSION_SECRET",
+    "API_KEY_PEPPER",
+    "INTERNAL_API_SECRET",
+    "VAULT_API_KEY",
+    "WORLDFLOW_API_KEY",
+    "NORDPAY_API_KEY",
+    "BILLING_LEGACY_PASSWORD",
+    "WEBHOOK_SIGNING_KEK",
+  ]
+
+  rotation_days            = 0
+  recovery_window_days     = 0
+  kms_deletion_window_days = 7
+}
+
+# Database ingress, declared here for the same module-cycle reason as production. See the
+# note at the top of envs/production/data_stores.tf.
+
+resource "aws_vpc_security_group_ingress_rule" "db_api_from_api" {
+  security_group_id            = module.db_api.security_group_id
+  description                  = "payzeno-api tasks to payzeno_api"
+  referenced_security_group_id = module.payzeno_api.security_group_id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "db_ledger_from_ledger" {
+  security_group_id            = module.db_ledger.security_group_id
+  description                  = "payzeno-ledger tasks to payzeno_ledger"
+  referenced_security_group_id = module.payzeno_ledger.security_group_id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+

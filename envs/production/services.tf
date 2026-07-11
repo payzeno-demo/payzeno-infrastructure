@@ -409,3 +409,15 @@ module "payzeno_nginx" {
 
   listener_ports             = [80, 8081]
   proxy_read_timeout_seconds = 60
+  client_max_body_size       = "10m"
+}
+
+# ---------------------------------------------------------------------------
+# Drift check. PAYZENO_INFRA_DRIFT.
+# ---------------------------------------------------------------------------
+
+locals {
+  discovery_dns_names = [
+    module.payzeno_api.discovery_dns,
+    module.payzeno_ledger.discovery_dns,
+    module.payzeno_ledger_canary.discovery_dns,

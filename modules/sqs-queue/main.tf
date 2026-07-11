@@ -167,3 +167,95 @@ data "aws_iam_policy_document" "queue" {
         "sqs:DeleteMessage",
         "sqs:ChangeMessageVisibility",
         "sqs:GetQueueAttributes",
+      ]
+      resources = [aws_sqs_queue.this.arn]
+
+      principals {
+        type        = "AWS"
+        identifiers = var.consumer_role_arns
+      }
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "this" {
+  queue_url = aws_sqs_queue.this.id
+  policy    = data.aws_iam_policy_document.queue.json
+}
+
+# THE LISTENS_ON EDGE. The filter policy members are the event types the consumer class
+# handles, copied verbatim from api-surface.md §14.
+#
+# raw_message_delivery is false on purpose: consumers parse the SNS envelope so that
+# MessageAttributes survive, and every consumer's dedupe claim is on the envelope id.
+resource "aws_sns_topic_subscription" "this" {
+  count = local.has_subscription ? 1 : 0
+
+  topic_arn = var.topic_arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.this.arn
+
+  raw_message_delivery = false
+
+  filter_policy_scope = "MessageAttributes"
+  filter_policy       = length(local.filter_event_types) > 0 ? jsonencode(var.filter_policy) : null
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.dlq.arn
+  })
+
+  depends_on = [aws_sqs_queue_policy.this]
+}
+
+# ---------------------------------------------------------------------------
+# Alarms — both born on the postmortem day, PAY-2055.
+# ---------------------------------------------------------------------------
+
+module "age_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.name
+  environment = var.environment
+  name        = "oldest-message-age"
+  namespace   = "AWS/SQS"
+  metric_name = "ApproximateAgeOfOldestMessage"
+  statistic   = "Maximum"
+  threshold   = var.age_alarm_threshold_seconds
+
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 3
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    QueueName = aws_sqs_queue.this.name
+  }
+
+  alarm_actions = var.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#queue-backlog"
+  description   = "${local.queue_name} has a message older than ${var.age_alarm_threshold_seconds}s. The consumer is stuck, slow, or the acquirer behind it is."
+}
+
+# Depth, not just age. Age catches "nothing is being consumed"; depth catches "consumption
+# is happening and losing". On the night of PAY-2041 the drain WAS consuming — it was
+# 4,113 items behind and going backwards, and every message was young.
+module "depth_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.name
+  environment = var.environment
+  name        = "queue-depth"
+  namespace   = "AWS/SQS"
+  metric_name = "ApproximateNumberOfMessagesVisible"
+  statistic   = "Maximum"
+  threshold   = var.depth_alarm_threshold
+
+  period              = 60
+  evaluation_periods  = 10
+  datapoints_to_alarm = 5
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    QueueName = aws_sqs_queue.this.name
+  }
+

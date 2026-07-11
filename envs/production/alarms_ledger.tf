@@ -163,3 +163,33 @@ resource "aws_cloudwatch_metric_alarm" "ledger_batch_overposted" {
 # else in this file: a large retryable backlog is what makes a sweep and a drain overlap on
 # the same item in the first place.
 #
+# 7200 is deliberately generous. The sweep runs every 900s and a normal batch takes two or
+# three passes; anything under an hour is noise.
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "ledger_reconciliation_lag" {
+  alarm_name        = "payzeno-ledger-production-reconciliation-lag"
+  alarm_description = "The oldest pending reconciliation_item is over two hours old. The sweep is behind. This is the state that precedes a sweep/drain overlap — read the runbook before touching anything. Runbook: ${local.ledger_runbook}#reconciliation-lag"
+
+  namespace   = local.ledger_namespace
+  metric_name = "ReconciliationOldestPendingItemAgeSeconds"
+  statistic   = "Maximum"
+
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = 7200
+  period              = 300
+  evaluation_periods  = 3
+  datapoints_to_alarm = 2
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    Environment = "production"
+  }
+
+  alarm_actions = local.ledger_alarm_actions
+
+  tags = {
+    Name        = "payzeno-ledger-production-reconciliation-lag"
+    Service     = "payzeno-ledger"
+    Environment = "production"
+    Team        = "infra"

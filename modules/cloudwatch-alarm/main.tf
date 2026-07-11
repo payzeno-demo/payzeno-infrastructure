@@ -149,3 +149,23 @@ locals {
     "Runbook: ${var.runbook_url}",
   ]))
 }
+
+resource "aws_cloudwatch_metric_alarm" "this" {
+  alarm_name          = local.alarm_name
+  alarm_description   = local.alarm_description
+  namespace           = var.namespace
+  metric_name         = var.metric_name
+  statistic           = var.extended_statistic == null ? var.statistic : null
+  extended_statistic  = var.extended_statistic
+  comparison_operator = var.comparison_operator
+  threshold           = var.threshold
+  period              = var.period
+  evaluation_periods  = var.evaluation_periods
+  datapoints_to_alarm = var.datapoints_to_alarm
+  treat_missing_data  = var.treat_missing_data
+  dimensions          = var.dimensions
+
+  alarm_actions = var.alarm_actions
+  ok_actions    = var.ok_actions
+
+  tags = merge(module.names.tags, {

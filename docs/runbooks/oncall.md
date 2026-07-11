@@ -176,6 +176,60 @@ while the drain is still working — and that is the overlap.
 
 ---
 
+## dead-letter-queue
+
+**Alarm:** `*-dlq-not-empty`.
+
+Something failed `max_receive_count` times in a row. One message is enough to page, on
+purpose.
+
+Look before you move anything:
+
+```bash
+aws sqs receive-message \
+  --queue-url "$(aws sqs get-queue-url --queue-name ${QUEUE}-dlq --query QueueUrl --output text)" \
+  --max-number-of-messages 10 --visibility-timeout 0 \
+  --message-attribute-names All
+```
+
+If the cause is fixed, move them back:
+
+```bash
+aws sqs start-message-move-task \
+  --source-arn "arn:aws:sqs:eu-west-1:418355290117:${QUEUE}-dlq" \
+  --max-number-of-messages-per-second 10
+```
+
+There is no automation for this. That is PAY-2062 and it has been open since the postmortem.
+
+---
+
+## unhealthy-targets
+
+**Alarm:** `*-unhealthy-hosts`.
+
+Targets are failing `/healthz`.
+
+```bash
+SVC=payzeno-api-production
+
+aws ecs describe-services --cluster $CLUSTER --services $SVC \
+  --query 'services[0].events[:10]'
+
+aws logs tail /payzeno/production/payzeno-api --since 15m --follow
+```
+
+The usual causes, in order of how often they are the cause:
+
+1. A deploy just went out. Check `deployments[]` — the circuit breaker rolls back on its own,
+   so give it four minutes before you touch anything.
+2. The service cannot reach its database. Go to
+   [database-connections-high](#database-connections-high).
+3. A secret was rotated and the task cannot read it. The error is in the **ECS event stream**,
+   not in the application logs, because the execution role fails before the container starts.
+
+---
+
 ## tasks-below-desired
 
 **Alarm:** `*-tasks-below-desired`.
@@ -195,6 +249,28 @@ aws ecs describe-tasks --cluster $CLUSTER --tasks <arn> \
 `OutOfMemoryError: Container killed due to memory usage` means the task `memory` in
 `envs/production/services.tf` is too low for what the service is now doing. Raise it in a PR;
 do not raise it in the console, because the next apply will put it back.
+
+---
+
+## service-cpu-high
+
+**Alarm:** `*-cpu-high`.
+
+Above 85% for five minutes. Autoscaling should already be reacting — check that it is:
+
+```bash
+aws application-autoscaling describe-scaling-activities \
+  --service-namespace ecs \
+  --resource-id service/$CLUSTER/$SVC --max-results 5
+```
+
+If it is at `autoscaling_max`, raise the max in a PR. If it is *not* scaling, the scalable
+target has probably been pinned by hand during a previous incident and never unpinned — see
+the end of [scale the ledger to one task](#scale-the-ledger-to-one-task).
+
+For the ledger specifically: CPU is a poor proxy for its load, because its work is a queue
+backlog and a blocked task is an idle task. On the night of PAY-2041 the ledger was 4,113
+items behind and CPU said everything was fine. That is PAY-1912.
 
 ---
 
@@ -224,6 +300,35 @@ limit 20;
 
 ---
 
+## database-connections-high
+
+**Alarm:** `*-db-connections-high`.
+
+The threshold is a *fraction* of `max_connections` (0.75 on the ledger since PAY-2041), not
+a fixed number, so it cannot be made unreachable by raising the pool.
+
+```sql
+select state, count(*) from pg_stat_activity group by state;
+select pid, state, now() - xact_start as xact_age, left(query, 80)
+from pg_stat_activity
+where state <> 'idle'
+order by xact_start
+limit 20;
+```
+
+- Lots of `idle in transaction` — a handler is holding a transaction open across an external
+  call. That is a bug and it is the shape of the money-path lock problem; read
+  `payzeno-ledger/docs/adr/0011-lock-ordering-in-the-money-path.md`.
+- Lots of `active`, all short — you are out of pool, not out of database. Check task count ×
+  `DATABASE_POOL_SIZE` against `max_connections` (`envs/production/data_stores.tf`,
+  `module.db_ledger`). Four tasks × 20 = 80, plus the canary, plus alembic during a deploy.
+
+Do not raise `DATABASE_POOL_SIZE` without raising `max_connections` in the same PR.
+`modules/rds-postgres` has a precondition on the 3× rule and it will fail the plan, which is
+what it is for.
+
+---
+
 ## secrets and rotation
 
 A task that will not start with no application logs at all is usually a secret it cannot
@@ -247,3 +352,12 @@ it on at 02:00. PAY-1699.
 
 ---
 
+## when it is over
+
+- Put every console change into a PR the same day. Anything terraform does not know about
+  reverts itself on the next apply.
+- Postmortem within 48 hours, blameless, with the `#incidents` timeline pasted in as-is.
+- One hardening ticket per contributing cause, not one per symptom.
+- If the alarm that should have caught it did not exist, write it *before* the postmortem
+  meeting. That is what `envs/production/alarms_ledger.tf` is, and it was written at 03:40
+  because at 01:44 there was nothing to read.
