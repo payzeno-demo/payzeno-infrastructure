@@ -54,6 +54,14 @@ module "topic_payments_events" {
   kms_key_arn = aws_kms_key.bus.arn
 }
 
+module "topic_merchant_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-merchant-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
 # Created month 6, when invoice.issued landed in contracts and the strangler needed a way to
 # get invoices out of the legacy biller without the api polling it. Before that this topic
 # did not exist and module.q_api_billing did not either.

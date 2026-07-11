@@ -244,3 +244,18 @@ module "depth_alarm" {
 
   service     = var.name
   environment = var.environment
+  name        = "queue-depth"
+  namespace   = "AWS/SQS"
+  metric_name = "ApproximateNumberOfMessagesVisible"
+  statistic   = "Maximum"
+  threshold   = var.depth_alarm_threshold
+
+  period              = 60
+  evaluation_periods  = 10
+  datapoints_to_alarm = 5
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    QueueName = aws_sqs_queue.this.name
+  }
+
