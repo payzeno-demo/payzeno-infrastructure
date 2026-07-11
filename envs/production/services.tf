@@ -415,3 +415,9 @@ module "payzeno_nginx" {
 # ---------------------------------------------------------------------------
 # Drift check. PAYZENO_INFRA_DRIFT.
 # ---------------------------------------------------------------------------
+
+locals {
+  discovery_dns_names = [
+    module.payzeno_api.discovery_dns,
+    module.payzeno_ledger.discovery_dns,
+    module.payzeno_ledger_canary.discovery_dns,
