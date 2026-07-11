@@ -176,6 +176,32 @@ while the drain is still working — and that is the overlap.
 
 ---
 
+## unhealthy-targets
+
+**Alarm:** `*-unhealthy-hosts`.
+
+Targets are failing `/healthz`.
+
+```bash
+SVC=payzeno-api-production
+
+aws ecs describe-services --cluster $CLUSTER --services $SVC \
+  --query 'services[0].events[:10]'
+
+aws logs tail /payzeno/production/payzeno-api --since 15m --follow
+```
+
+The usual causes, in order of how often they are the cause:
+
+1. A deploy just went out. Check `deployments[]` — the circuit breaker rolls back on its own,
+   so give it four minutes before you touch anything.
+2. The service cannot reach its database. Go to
+   [database-connections-high](#database-connections-high).
+3. A secret was rotated and the task cannot read it. The error is in the **ECS event stream**,
+   not in the application logs, because the execution role fails before the container starts.
+
+---
+
 ## tasks-below-desired
 
 **Alarm:** `*-tasks-below-desired`.
@@ -269,3 +295,12 @@ it on at 02:00. PAY-1699.
 
 ---
 
+## when it is over
+
+- Put every console change into a PR the same day. Anything terraform does not know about
+  reverts itself on the next apply.
+- Postmortem within 48 hours, blameless, with the `#incidents` timeline pasted in as-is.
+- One hardening ticket per contributing cause, not one per symptom.
+- If the alarm that should have caught it did not exist, write it *before* the postmortem
+  meeting. That is what `envs/production/alarms_ledger.tf` is, and it was written at 03:40
+  because at 01:44 there was nothing to read.

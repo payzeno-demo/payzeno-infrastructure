@@ -182,3 +182,19 @@ resource "aws_sqs_queue_policy" "this" {
   queue_url = aws_sqs_queue.this.id
   policy    = data.aws_iam_policy_document.queue.json
 }
+
+# THE LISTENS_ON EDGE. The filter policy members are the event types the consumer class
+# handles, copied verbatim from api-surface.md §14.
+#
+# raw_message_delivery is false on purpose: consumers parse the SNS envelope so that
+# MessageAttributes survive, and every consumer's dedupe claim is on the envelope id.
+resource "aws_sns_topic_subscription" "this" {
+  count = local.has_subscription ? 1 : 0
+
+  topic_arn = var.topic_arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.this.arn
+
+  raw_message_delivery = false
+
+  filter_policy_scope = "MessageAttributes"
