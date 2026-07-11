@@ -570,3 +570,17 @@ resource "aws_elasticache_replication_group" "cache_api" {
 
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
+
+  snapshot_retention_limit = 0
+
+  tags = {
+    Name = "payzeno-api-staging"
+  }
+}
+
+module "cache_api_secret" {
+  source = "../../modules/secrets"
+
+  service       = "payzeno-api"
+  environment   = local.environment
+  purpose       = "cache"
