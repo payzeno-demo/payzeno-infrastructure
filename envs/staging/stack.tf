@@ -556,3 +556,17 @@ resource "aws_elasticache_replication_group" "cache_api" {
   replication_group_id = "payzeno-api-staging"
   description          = "payzeno-api idempotency store and rate-limit counters (staging)"
 
+  engine         = "redis"
+  engine_version = "7.1"
+  node_type      = "cache.t4g.micro"
+  port           = 6379
+
+  num_cache_clusters         = 1
+  automatic_failover_enabled = false
+  multi_az_enabled           = false
+
+  subnet_group_name  = aws_elasticache_subnet_group.cache_api.name
+  security_group_ids = [aws_security_group.cache_api.id]
+
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
