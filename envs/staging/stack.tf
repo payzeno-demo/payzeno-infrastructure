@@ -584,3 +584,17 @@ module "cache_api_secret" {
   service       = "payzeno-api"
   environment   = local.environment
   purpose       = "cache"
+  secret_names  = ["REDIS_URL"]
+  rotation_days = 0
+
+  # Staging secrets are recreated often enough that a 30-day recovery window means the next
+  # apply collides with a scheduled-for-deletion name. Zero is only acceptable here.
+  recovery_window_days     = 0
+  kms_deletion_window_days = 7
+}
+
+module "platform_secrets" {
+  source = "../../modules/secrets"
+
+  service     = "payzeno-api"
+  environment = local.environment
