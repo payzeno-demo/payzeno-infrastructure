@@ -201,3 +201,12 @@ module "platform_secrets" {
 # The webhook signing KEK. A raw resource with its own key rather than part of
 # module.platform_secrets, because it is an *envelope* key: webhook_endpoint.secret_ciphertext
 # rows in payzeno_api are encrypted under it, so rotating it means re-wrapping every merchant
+# endpoint secret. That is a migration, not a rotation, and it must not be able to happen by
+# accident. Created month 5, arc PCI.
+resource "aws_kms_key" "webhook_signing" {
+  description             = "Envelope key for payzeno_api.webhook_endpoint secrets (production)"
+  enable_key_rotation     = false
+  deletion_window_in_days = 30
+
+  tags = {
+    Name    = "payzeno-production-webhook-signing"
