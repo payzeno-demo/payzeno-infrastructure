@@ -106,6 +106,17 @@ variable "pagerduty_integration_key" {
   default     = "PLACEHOLDER_SET_AT_APPLY"
 }
 
+variable "slack_incidents_webhook_path" {
+  description = "Path portion of the #incidents Slack webhook."
+  type        = string
+  sensitive   = true
+  default     = "PLACEHOLDER_SET_AT_APPLY"
+}
+
+# ---------------------------------------------------------------------------
+# Queues — payzeno-ledger consumers
+# ---------------------------------------------------------------------------
+
 module "q_ledger_payments" {
   source = "../../modules/sqs-queue"
 

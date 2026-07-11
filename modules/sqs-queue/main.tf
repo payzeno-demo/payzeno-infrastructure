@@ -198,3 +198,18 @@ resource "aws_sns_topic_subscription" "this" {
   raw_message_delivery = false
 
   filter_policy_scope = "MessageAttributes"
+  filter_policy       = length(local.filter_event_types) > 0 ? jsonencode(var.filter_policy) : null
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.dlq.arn
+  })
+
+  depends_on = [aws_sqs_queue_policy.this]
+}
+
+# ---------------------------------------------------------------------------
+# Alarms — both born on the postmortem day, PAY-2055.
+# ---------------------------------------------------------------------------
+
+module "age_alarm" {
+  source = "../cloudwatch-alarm"
