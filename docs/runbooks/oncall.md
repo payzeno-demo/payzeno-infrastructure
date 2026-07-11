@@ -300,6 +300,35 @@ limit 20;
 
 ---
 
+## database-connections-high
+
+**Alarm:** `*-db-connections-high`.
+
+The threshold is a *fraction* of `max_connections` (0.75 on the ledger since PAY-2041), not
+a fixed number, so it cannot be made unreachable by raising the pool.
+
+```sql
+select state, count(*) from pg_stat_activity group by state;
+select pid, state, now() - xact_start as xact_age, left(query, 80)
+from pg_stat_activity
+where state <> 'idle'
+order by xact_start
+limit 20;
+```
+
+- Lots of `idle in transaction` — a handler is holding a transaction open across an external
+  call. That is a bug and it is the shape of the money-path lock problem; read
+  `payzeno-ledger/docs/adr/0011-lock-ordering-in-the-money-path.md`.
+- Lots of `active`, all short — you are out of pool, not out of database. Check task count ×
+  `DATABASE_POOL_SIZE` against `max_connections` (`envs/production/data_stores.tf`,
+  `module.db_ledger`). Four tasks × 20 = 80, plus the canary, plus alembic during a deploy.
+
+Do not raise `DATABASE_POOL_SIZE` without raising `max_connections` in the same PR.
+`modules/rds-postgres` has a precondition on the 3× rule and it will fail the plan, which is
+what it is for.
+
+---
+
 ## secrets and rotation
 
 A task that will not start with no application logs at all is usually a secret it cannot
