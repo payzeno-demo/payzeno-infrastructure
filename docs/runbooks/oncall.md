@@ -176,6 +176,34 @@ while the drain is still working — and that is the overlap.
 
 ---
 
+## dead-letter-queue
+
+**Alarm:** `*-dlq-not-empty`.
+
+Something failed `max_receive_count` times in a row. One message is enough to page, on
+purpose.
+
+Look before you move anything:
+
+```bash
+aws sqs receive-message \
+  --queue-url "$(aws sqs get-queue-url --queue-name ${QUEUE}-dlq --query QueueUrl --output text)" \
+  --max-number-of-messages 10 --visibility-timeout 0 \
+  --message-attribute-names All
+```
+
+If the cause is fixed, move them back:
+
+```bash
+aws sqs start-message-move-task \
+  --source-arn "arn:aws:sqs:eu-west-1:418355290117:${QUEUE}-dlq" \
+  --max-number-of-messages-per-second 10
+```
+
+There is no automation for this. That is PAY-2062 and it has been open since the postmortem.
+
+---
+
 ## unhealthy-targets
 
 **Alarm:** `*-unhealthy-hosts`.

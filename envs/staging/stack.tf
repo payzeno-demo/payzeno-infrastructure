@@ -598,3 +598,17 @@ module "platform_secrets" {
 
   service     = "payzeno-api"
   environment = local.environment
+  purpose     = "platform"
+
+  # WEBHOOK_SIGNING_KEK is in this list here but is a standalone resource with its own CMK in
+  # production, because rotating it there re-wraps every merchant's webhook secret. In
+  # staging there are eleven test endpoints and nobody minds.
+  secret_names = [
+    "SESSION_SECRET",
+    "API_KEY_PEPPER",
+    "INTERNAL_API_SECRET",
+    "VAULT_API_KEY",
+    "WORLDFLOW_API_KEY",
+    "NORDPAY_API_KEY",
+    "BILLING_LEGACY_PASSWORD",
+    "WEBHOOK_SIGNING_KEK",

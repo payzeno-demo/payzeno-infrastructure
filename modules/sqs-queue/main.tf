@@ -213,3 +213,19 @@ resource "aws_sns_topic_subscription" "this" {
 
 module "age_alarm" {
   source = "../cloudwatch-alarm"
+
+  service     = var.name
+  environment = var.environment
+  name        = "oldest-message-age"
+  namespace   = "AWS/SQS"
+  metric_name = "ApproximateAgeOfOldestMessage"
+  statistic   = "Maximum"
+  threshold   = var.age_alarm_threshold_seconds
+
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 3
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    QueueName = aws_sqs_queue.this.name
