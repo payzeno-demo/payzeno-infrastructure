@@ -218,3 +218,12 @@ resource "aws_kms_key" "webhook_signing" {
 resource "aws_kms_alias" "webhook_signing" {
   name          = "alias/payzeno-production-webhook-signing"
   target_key_id = aws_kms_key.webhook_signing.key_id
+}
+
+resource "aws_secretsmanager_secret" "webhook_signing_kek" {
+  name        = "/payzeno/production/payzeno-api/WEBHOOK_SIGNING_KEK"
+  description = "Base64 KEK wrapping webhook_endpoint.secret_ciphertext. Rotation is a re-wrap migration — see PAY-1699 and docs/runbooks/oncall.md."
+  kms_key_id  = aws_kms_key.webhook_signing.arn
+
+  recovery_window_in_days = 30
+

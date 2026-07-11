@@ -162,3 +162,10 @@ resource "aws_cloudwatch_metric_alarm" "this" {
   period              = var.period
   evaluation_periods  = var.evaluation_periods
   datapoints_to_alarm = var.datapoints_to_alarm
+  treat_missing_data  = var.treat_missing_data
+  dimensions          = var.dimensions
+
+  alarm_actions = var.alarm_actions
+  ok_actions    = var.ok_actions
+
+  tags = merge(module.names.tags, {
