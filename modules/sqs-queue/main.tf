@@ -229,3 +229,18 @@ module "age_alarm" {
 
   dimensions = {
     QueueName = aws_sqs_queue.this.name
+  }
+
+  alarm_actions = var.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#queue-backlog"
+  description   = "${local.queue_name} has a message older than ${var.age_alarm_threshold_seconds}s. The consumer is stuck, slow, or the acquirer behind it is."
+}
+
+# Depth, not just age. Age catches "nothing is being consumed"; depth catches "consumption
+# is happening and losing". On the night of PAY-2041 the drain WAS consuming — it was
+# 4,113 items behind and going backwards, and every message was young.
+module "depth_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.name
+  environment = var.environment
