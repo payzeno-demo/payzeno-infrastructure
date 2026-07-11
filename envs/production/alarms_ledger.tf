@@ -178,3 +178,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_reconciliation_lag" {
   comparison_operator = "GreaterThanThreshold"
   threshold           = 7200
   period              = 300
+  evaluation_periods  = 3
+  datapoints_to_alarm = 2
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    Environment = "production"
+  }
+
+  alarm_actions = local.ledger_alarm_actions
+
+  tags = {
+    Name        = "payzeno-ledger-production-reconciliation-lag"
+    Service     = "payzeno-ledger"
+    Environment = "production"
+    Team        = "infra"

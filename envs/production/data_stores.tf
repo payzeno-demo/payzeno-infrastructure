@@ -210,3 +210,11 @@ resource "aws_kms_key" "webhook_signing" {
 
   tags = {
     Name    = "payzeno-production-webhook-signing"
+    Service = "payzeno-api"
+    Note    = "rotating this re-wraps every merchant webhook secret. PAY-1699."
+  }
+}
+
+resource "aws_kms_alias" "webhook_signing" {
+  name          = "alias/payzeno-production-webhook-signing"
+  target_key_id = aws_kms_key.webhook_signing.key_id

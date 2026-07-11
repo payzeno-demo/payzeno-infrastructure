@@ -156,3 +156,9 @@ resource "aws_cloudwatch_metric_alarm" "this" {
   namespace           = var.namespace
   metric_name         = var.metric_name
   statistic           = var.extended_statistic == null ? var.statistic : null
+  extended_statistic  = var.extended_statistic
+  comparison_operator = var.comparison_operator
+  threshold           = var.threshold
+  period              = var.period
+  evaluation_periods  = var.evaluation_periods
+  datapoints_to_alarm = var.datapoints_to_alarm
