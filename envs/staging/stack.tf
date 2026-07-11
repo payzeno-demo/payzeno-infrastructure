@@ -612,3 +612,17 @@ module "platform_secrets" {
     "NORDPAY_API_KEY",
     "BILLING_LEGACY_PASSWORD",
     "WEBHOOK_SIGNING_KEK",
+  ]
+
+  rotation_days            = 0
+  recovery_window_days     = 0
+  kms_deletion_window_days = 7
+}
+
+# Database ingress, declared here for the same module-cycle reason as production. See the
+# note at the top of envs/production/data_stores.tf.
+
+resource "aws_vpc_security_group_ingress_rule" "db_api_from_api" {
+  security_group_id            = module.db_api.security_group_id
+  description                  = "payzeno-api tasks to payzeno_api"
+  referenced_security_group_id = module.payzeno_api.security_group_id
