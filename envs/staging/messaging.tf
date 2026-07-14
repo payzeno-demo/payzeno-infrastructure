@@ -45,12 +45,52 @@ module "topic_payments_events" {
   kms_key_arn = aws_kms_key.bus.arn
 }
 
+module "topic_ledger_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-ledger-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
 module "topic_merchant_events" {
   source = "../../modules/sns-topic"
 
   name        = "payzeno-merchant-events"
   environment = local.environment
   kms_key_arn = aws_kms_key.bus.arn
+}
+
+module "topic_billing_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-billing-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
+# ---------------------------------------------------------------------------
+# Queues
+# ---------------------------------------------------------------------------
+
+module "q_ledger_merchants" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-ledger-merchants"
+  environment = local.environment
+  topic_arn   = module.topic_merchant_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "merchant.created",
+      "merchant.updated",
+      "merchant.status_changed",
+      "merchant.bank_account_verified",
+    ]
+  }
+
+  visibility_timeout    = 60
+  depth_alarm_threshold = 100
 }
 
 module "q_api_ledger" {
