@@ -193,3 +193,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_reconciliation_lag" {
     Service     = "payzeno-ledger"
     Environment = "production"
     Team        = "infra"
+    ManagedBy   = "terraform"
+    Repo        = "payzeno-infrastructure"
+    Ticket      = "PAY-2055"
+    Runbook     = "${local.ledger_runbook}#reconciliation-lag"
+    Severity    = "sev2"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Retry drain depth.
+#
+# RetryableItemCount — how many reconciliation_items are sitting in a RETRYABLE status. It
+# went from single digits to 4,113 in eleven minutes and nothing anywhere reported it. The
+# drain was running, on one task (module.payzeno_ledger_canary), and it took 21 minutes to
+# work through them while three batch sweeps ran alongside.

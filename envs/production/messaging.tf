@@ -301,6 +301,19 @@ module "q_console_notifications" {
   runbook_base_url = local.runbook_base_url
 }
 
+resource "aws_sns_topic_subscription" "console_notifications_payments" {
+  topic_arn = module.topic_payments_events.topic_arn
+  protocol  = "sqs"
+  endpoint  = module.q_console_notifications.queue_arn
+
+  raw_message_delivery = false
+  filter_policy_scope  = "MessageAttributes"
+
+  filter_policy = jsonencode({
+    event_type = ["dispute.opened"]
+  })
+}
+
 module "q_api_billing" {
   source = "../../modules/sqs-queue"
 
