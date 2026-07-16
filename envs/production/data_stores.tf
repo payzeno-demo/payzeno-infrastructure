@@ -227,3 +227,11 @@ resource "aws_secretsmanager_secret" "webhook_signing_kek" {
 
   recovery_window_in_days = 30
 
+  tags = {
+    Name    = "WEBHOOK_SIGNING_KEK"
+    Service = "payzeno-api"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Database ingress. Declared here rather than inside the database modules — see the note at

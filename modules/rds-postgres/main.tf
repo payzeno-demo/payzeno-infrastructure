@@ -205,3 +205,21 @@ resource "aws_db_instance" "this" {
       condition     = var.environment != "production" || var.backup_retention_days >= 14
       error_message = "PAYZENO_INFRA_PRECONDITION: production keeps at least 14 days of backups. A duplicate-settlement investigation reaches back further than seven days — we know, we did one."
     }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Alarms
+# ---------------------------------------------------------------------------
+
+module "cpu_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.service
+  environment = var.environment
+  name        = "db-cpu-high"
+  namespace   = "AWS/RDS"
+  metric_name = "CPUUtilization"
+  statistic   = "Average"
+  threshold   = var.cpu_alarm_threshold
+
