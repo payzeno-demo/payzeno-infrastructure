@@ -259,3 +259,19 @@ module "depth_alarm" {
     QueueName = aws_sqs_queue.this.name
   }
 
+  alarm_actions = var.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#queue-backlog"
+  description   = "${local.queue_name} is holding more than ${var.depth_alarm_threshold} visible messages."
+}
+
+# Anything in a DLQ is a message a human has to decide about. One is enough to know.
+module "dlq_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.name
+  environment = var.environment
+  name        = "dlq-not-empty"
+  namespace   = "AWS/SQS"
+  metric_name = "ApproximateNumberOfMessagesVisible"
+  statistic   = "Maximum"
+  threshold   = 0

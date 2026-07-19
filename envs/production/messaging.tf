@@ -54,6 +54,14 @@ module "topic_payments_events" {
   kms_key_arn = aws_kms_key.bus.arn
 }
 
+module "topic_ledger_events" {
+  source = "../../modules/sns-topic"
+
+  name        = "payzeno-ledger-events"
+  environment = local.environment
+  kms_key_arn = aws_kms_key.bus.arn
+}
+
 module "topic_merchant_events" {
   source = "../../modules/sns-topic"
 
