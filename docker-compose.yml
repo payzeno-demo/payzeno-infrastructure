@@ -48,9 +48,11 @@ services:
     environment:                       # keys drawn verbatim from §7
       NODE_ENV: development
       PORT: "8080"
+      DATABASE_URL: postgres://payzeno:payzeno@payzeno-postgres-api:5432/payzeno_api
       REDIS_URL: redis://payzeno-redis:6379/0
       LEDGER_BASE_URL: http://payzeno-ledger:8000
       BILLING_LEGACY_BASE_URL: http://payzeno-billing-legacy:8090
+      VAULT_BASE_URL: http://payzeno-vault:8099
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
 
       # Internal auth. The SAME string as the ledger's INTERNAL_API_SECRET and the legacy
@@ -217,6 +219,7 @@ services:
       VITE_WS_URL: ws://localhost/ws/notifications
       VITE_VAULT_PUBLIC_URL: http://localhost:8099/public
       VITE_ENVIRONMENT: local
+      VITE_SENTRY_DSN: ""
       VITE_FEATURE_SETTLEMENT_EXPLORER: "true"
       VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
     depends_on: [payzeno-api]

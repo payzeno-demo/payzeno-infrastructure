@@ -26,6 +26,7 @@ services:
   # -------------------------------------------------------------------------
   payzeno-acquirer-sandbox:
     image: payzeno/acquirer-sandbox:1.4
+    ports: ["9100:9100", "9101:9101"]
     environment:
       SANDBOX_WORLDFLOW_PORT: "9100"
       SANDBOX_NORDPAY_PORT: "9101"
