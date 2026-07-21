@@ -31,6 +31,16 @@ variable "engine_version" {
   }
 }
 
+variable "instance_class" {
+  description = "RDS instance class. Production ledger is db.r6g.xlarge since PAY-1744; production api is db.r6g.large; staging is db.t4g.medium."
+  type        = string
+
+  validation {
+    condition     = can(regex("^db\\.(t4g|r6g|m6g)\\.", var.instance_class))
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: instance_class must be a graviton family (t4g, r6g, m6g). We are ARM everywhere and a x86 instance class here is a price increase for no reason."
+  }
+}
+
 variable "allocated_storage" {
   description = "Initial storage in GiB."
   type        = number
@@ -101,6 +111,16 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "subnet_ids" {
+  description = "Private subnets for the DB subnet group. Multi-AZ needs at least two AZs."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.subnet_ids) >= 2
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: a DB subnet group needs subnets in at least two availability zones."
+  }
+}
+
 variable "allowed_security_group_ids" {
   description = "Security groups permitted inbound on 5432. In practice this is the owning service's task SG, and nothing else."
   type        = list(string)
@@ -111,6 +131,12 @@ variable "monitoring_role_arn" {
   description = "Enhanced-monitoring role ARN. One per account, created outside this module."
   type        = string
   default     = null
+}
+
+variable "apply_immediately" {
+  description = "Apply modifications now rather than in the maintenance window. The month-7 instance-class bump forgot this and waited six days while everyone assumed it had landed — PAY-1746."
+  type        = bool
+  default     = false
 }
 
 variable "snapshot_suffix" {

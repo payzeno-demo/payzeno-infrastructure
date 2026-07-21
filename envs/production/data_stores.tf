@@ -227,3 +227,28 @@ resource "aws_secretsmanager_secret" "webhook_signing_kek" {
 
   recovery_window_in_days = 30
 
+  tags = {
+    Name    = "WEBHOOK_SIGNING_KEK"
+    Service = "payzeno-api"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Database ingress. Declared here rather than inside the database modules — see the note at
+# the top of this file about the module cycle.
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc_security_group_ingress_rule" "db_api_from_api" {
+  security_group_id            = module.db_api.security_group_id
+  description                  = "payzeno-api tasks to payzeno_api"
+  referenced_security_group_id = module.payzeno_api.security_group_id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "db_ledger_from_ledger" {
+  security_group_id            = module.db_ledger.security_group_id
+  description                  = "payzeno-ledger tasks to payzeno_ledger"
+  referenced_security_group_id = module.payzeno_ledger.security_group_id
+  from_port                    = 5432
