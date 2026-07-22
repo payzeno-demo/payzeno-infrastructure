@@ -421,3 +421,9 @@ locals {
     module.payzeno_api.discovery_dns,
     module.payzeno_ledger.discovery_dns,
     module.payzeno_ledger_canary.discovery_dns,
+    module.payzeno_billing_legacy.discovery_dns,
+    module.payzeno_vault.discovery_dns,
+  ]
+}
+
+check "unique_discovery_dns" {

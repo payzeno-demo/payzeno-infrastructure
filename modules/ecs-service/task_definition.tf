@@ -128,3 +128,18 @@ resource "aws_ecs_task_definition" "this" {
     cpu_architecture        = "ARM64"
   }
 
+  dynamic "volume" {
+    for_each = var.efs_volumes
+
+    content {
+      name = volume.value.name
+
+      efs_volume_configuration {
+        file_system_id     = volume.value.file_system_id
+        root_directory     = volume.value.root_directory
+        transit_encryption = "ENABLED"
+      }
+    }
+  }
+
+  tags = merge(module.names.tags, {

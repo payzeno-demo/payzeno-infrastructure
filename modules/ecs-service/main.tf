@@ -227,6 +227,84 @@ resource "aws_lb_target_group" "this" {
 # Service
 # ---------------------------------------------------------------------------
 
+resource "aws_ecs_service" "this" {
+  name            = module.names.id
+  cluster         = var.cluster_arn
+  task_definition = aws_ecs_task_definition.this.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+  propagate_tags  = "SERVICE"
+
+  enable_execute_command = var.enable_execute_command
+
+  # Two tasks' worth of headroom during a deploy, and never below the running count.
+  # The 100/200 pair is what makes a deploy of desired_count=1 (which is what production
+  # ran for seven hours after PAY-2041) still a rolling deploy rather than a gap.
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups  = [aws_security_group.this.id]
+    assign_public_ip = false
+  }
+
+  dynamic "load_balancer" {
+    for_each = local.is_alb_fronted ? [1] : []
+
+    content {
+      target_group_arn = aws_lb_target_group.this[0].arn
+      container_name   = var.enable_nginx_sidecar ? "nginx" : var.service
+      container_port   = var.enable_nginx_sidecar ? 80 : var.container_port
+    }
+  }
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.this.arn
+  }
+
+  tags = merge(module.names.tags, {
+    Name = module.names.id
+  })
+
+  lifecycle {
+    # The image tag moves on every deploy and deploys do not come from terraform. Without
+    # this, `terraform apply` for an unrelated tag change rolls the service back to whatever
+    # sha was in state.
+    ignore_changes = [task_definition]
+
+    precondition {
+      condition     = length(local.unexpected_env_keys) == 0
+      error_message = "PAYZENO_INFRA_PRECONDITION: ${var.service} was given environment_vars keys that are not on its contracted list (interfaces.md §7): ${join(", ", local.unexpected_env_keys)}. If the key is real, add it to local.allowed_env_keys AND to docker-compose.yml AND to the service's config module."
+    }
+
+    precondition {
+      # var.secrets says "inject this env var from this ARN". If the ARN is empty the task
+      # definition is still valid HCL and the container starts with the variable unset,
+      # which surfaces as a null-pointer four layers into the application.
+      condition     = alltrue([for k, v in var.secrets : v != null && v != ""])
+      error_message = "PAYZENO_INFRA_PRECONDITION: every key in var.secrets needs a resolved Secrets Manager ARN. A null here becomes an unset env var at runtime, not a plan error."
+    }
+
+    precondition {
+      condition     = var.desired_count >= var.autoscaling_min
+      error_message = "PAYZENO_INFRA_PRECONDITION: desired_count (${var.desired_count}) is below autoscaling_min (${var.autoscaling_min}); application autoscaling will immediately scale the service back up and the apply will look like it did nothing."
+    }
+  }
+
+  depends_on = [aws_iam_role_policy.exec]
+}
+
+# ---------------------------------------------------------------------------
+# Service discovery. The DNS name equals the compose service name on purpose — it is what
+# makes LEDGER_BASE_URL the same string in both planes.
+# ---------------------------------------------------------------------------
+
 resource "aws_service_discovery_service" "this" {
   name = var.component == "" ? var.service : "${var.service}-${var.component}"
 
@@ -365,3 +443,31 @@ module "unhealthy_host_alarm" {
   description   = "${var.service} has targets failing ${var.health_check_path} in ${var.environment}."
 }
 
+# A task that stops on its own is either OOM or a crash loop. Either way somebody wants to
+# know before the deploy that caused it is four deploys old.
+module "task_stopped_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.service
+  environment = var.environment
+  name        = "${local.alarm_prefix}tasks-below-desired"
+  namespace   = "AWS/ECS"
+  metric_name = "RunningTaskCount"
+  statistic   = "Minimum"
+  threshold   = var.desired_count
+
+  comparison_operator = "LessThanThreshold"
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 3
+  treat_missing_data  = "breaching"
+
+  dimensions = {
+    ClusterName = local.cluster_name
+    ServiceName = aws_ecs_service.this.name
+  }
+
+  alarm_actions = local.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#tasks-below-desired"
+  description   = "${var.service} is running fewer than ${var.desired_count} tasks in ${var.environment}."
+}
