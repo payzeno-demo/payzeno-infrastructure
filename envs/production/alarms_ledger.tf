@@ -208,3 +208,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_reconciliation_lag" {
 # went from single digits to 4,113 in eleven minutes and nothing anywhere reported it. The
 # drain was running, on one task (module.payzeno_ledger_canary), and it took 21 minutes to
 # work through them while three batch sweeps ran alongside.
+#
+# 500 is roughly the point at which the drain stops being able to catch up within one sweep
+# interval on a single task. If PAY-1691 ever lands and the drain runs everywhere, this
+# threshold goes up.
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudwatch_metric_alarm" "ledger_retry_drain_depth" {
+  alarm_name        = "payzeno-ledger-production-retry-drain-depth"
+  alarm_description = "More than 500 reconciliation_items are in a retryable status. The retry drain runs on ONE task (module.payzeno_ledger_canary, RETRY_DRAIN_ENABLED=true) and cannot clear this inside a sweep interval. Runbook: ${local.ledger_runbook}#retry-backlog"
+
+  namespace   = local.ledger_namespace
+  metric_name = "RetryableItemCount"
+  statistic   = "Maximum"
+
+  comparison_operator = "GreaterThanThreshold"

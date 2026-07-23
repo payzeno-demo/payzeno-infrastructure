@@ -252,3 +252,12 @@ resource "aws_vpc_security_group_ingress_rule" "db_ledger_from_ledger" {
   description                  = "payzeno-ledger tasks to payzeno_ledger"
   referenced_security_group_id = module.payzeno_ledger.security_group_id
   from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+# The canary is a second ECS service on the same image with its own security group, so it
+# needs its own rule. Forgetting this is why the canary spent forty minutes CrashLooping the
+# first time it was deployed.
+resource "aws_vpc_security_group_ingress_rule" "db_ledger_from_ledger_canary" {
+  security_group_id            = module.db_ledger.security_group_id

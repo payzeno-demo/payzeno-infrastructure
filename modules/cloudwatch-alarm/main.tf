@@ -169,3 +169,10 @@ resource "aws_cloudwatch_metric_alarm" "this" {
   ok_actions    = var.ok_actions
 
   tags = merge(module.names.tags, {
+    Name    = local.alarm_name
+    Runbook = var.runbook_url
+  })
+}
+
+output "alarm_arn" {
+  description = "ARN of the alarm, for composite alarms and for the pager topic policy."
