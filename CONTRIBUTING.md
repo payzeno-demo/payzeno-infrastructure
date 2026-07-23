@@ -49,6 +49,22 @@ simple module, it is an untested one.
 
 Three tiers. Each has a greppable message prefix. Use the right one.
 
+### `PAYZENO_INFRA_INVALID_INPUT` — `variable { validation { ... } }`
+
+Bad input, caught at plan time before anything is evaluated. This is where most of your
+guardrails belong. Examples in the repo:
+
+- `naming`: `service` must match `^payzeno-[a-z-]+$`
+- `ecs-service`: `environment_vars` keys must be on that service's contracted list
+- `ecs-service`: `container_port` ∈ {8080, 8000, 8090, 8099}
+- `rds-postgres`: `max_connections` ≥ 3 × the service's pool size
+- `sqs-queue`: `filter_policy` event types ⊆ the checked-in `EVENT_TYPES` list
+- `alb-listener-rule`: `priority` ∈ [1, 50000]
+- `cloudwatch-alarm`: `runbook_url` non-empty and `https://`
+
+The `environment_vars` validation is the one people complain about. It is the reason an
+env var name cannot silently differ between `docker-compose.yml` and `services.tf`. It stays.
+
 ### `PAYZENO_INFRA_PRECONDITION` — `lifecycle { precondition { ... } }`
 
 Invariants that depend on resolved values, not just inputs — a relationship between two

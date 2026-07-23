@@ -33,3 +33,20 @@
 /modules/static-site/               @apager @tflexbox
 
 # modules/rds-mysql is pre-convention and load-bearing. @hlegacy is the only
+# person who knows what depends on the hand-built jdbc_url output.
+/modules/rds-mysql/                 @apager @hlegacy
+
+# --- environments ----------------------------------------------------------
+# production pages people. Two names on it, always.
+/envs/production/                   @payzeno/infrastructure @apager @dhotfix
+/envs/production/alarms_ledger.tf   @apager @dhotfix @nmigration
+/envs/staging/                      @payzeno/infrastructure @apager
+
+# --- docs ------------------------------------------------------------------
+/docs/runbooks/                     @apager
+/docs/adr/                          @apager @dhotfix
+
+# --- repo plumbing ---------------------------------------------------------
+/.github/                           @payzeno/infrastructure @apager
+/Makefile                           @payzeno/infrastructure @apager
+/CODEOWNERS                         @apager @dhotfix
