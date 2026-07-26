@@ -223,3 +223,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_retry_drain_depth" {
   statistic   = "Maximum"
 
   comparison_operator = "GreaterThanThreshold"
+  threshold           = 500
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 3
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    Environment = "production"
+  }
+
+  alarm_actions = local.ledger_alarm_actions
+
+  tags = {
+    Name        = "payzeno-ledger-production-retry-drain-depth"
+    Service     = "payzeno-ledger"

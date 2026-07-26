@@ -261,3 +261,11 @@ resource "aws_vpc_security_group_ingress_rule" "db_ledger_from_ledger" {
 # first time it was deployed.
 resource "aws_vpc_security_group_ingress_rule" "db_ledger_from_ledger_canary" {
   security_group_id            = module.db_ledger.security_group_id
+  description                  = "payzeno-ledger canary task to payzeno_ledger"
+  referenced_security_group_id = module.payzeno_ledger_canary.security_group_id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "cache_api_from_api" {
