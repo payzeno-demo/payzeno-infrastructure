@@ -427,3 +427,9 @@ locals {
 }
 
 check "unique_discovery_dns" {
+  assert {
+    condition     = length(distinct(local.discovery_dns_names)) == length(local.discovery_dns_names)
+    error_message = "PAYZENO_INFRA_DRIFT: two ECS services resolved to the same service-discovery name. Every *_BASE_URL in this file points at one of these names, so a collision routes half of one service's traffic to another and the only symptom is intermittent 404s. The ledger canary is the usual cause — it must carry component = \"canary\"."
+  }
+}
+

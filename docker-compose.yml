@@ -67,7 +67,11 @@ services:
       PROCESSOR_DEFAULT_ACQUIRER: worldflow
 
       SESSION_SECRET: dev-session-secret-32-bytes-minimum-ok
+      CSRF_COOKIE_NAME: pz_csrf
       API_KEY_PEPPER: dev-api-key-pepper
+      # An alias, not a key. Locally it resolves inside localstack's KMS.
+      WEBHOOK_SIGNING_KEK: alias/payzeno-webhook-kek
+
       AWS_REGION: eu-west-1
       # Topic and queue names are frozen by events.ts's header table and api-surface.md §14,
       # and these are the same strings envs/*/messaging.tf creates. init-aws.sh in the
@@ -95,6 +99,8 @@ services:
       # nginx/payzeno-internal.conf moves /internal/v1/invoices/ off payzeno_legacy.
       FLAG_LEDGER_OWNS_INVOICES: "false"
       FLAG_LEDGER_OWNS_FEES: "true"
+      FLAG_REDACT_PAN_IN_LOGS: "true"
+
       LOG_LEVEL: debug
       OTEL_EXPORTER_OTLP_ENDPOINT: http://payzeno-otel-collector:4318
     depends_on:
