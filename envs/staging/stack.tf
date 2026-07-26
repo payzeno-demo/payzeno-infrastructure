@@ -654,3 +654,17 @@ resource "aws_vpc_security_group_ingress_rule" "cache_api_from_api" {
 # ---------------------------------------------------------------------------
 
 module "payzeno_console" {
+  source = "../../modules/static-site"
+
+  service     = "payzeno-console"
+  environment = local.environment
+
+  domain_name         = local.console_domain
+  acm_certificate_arn = data.aws_acm_certificate.payzeno_cloudfront.arn
+  spa_fallback        = true
+
+  api_origin          = local.api_origin
+  vault_public_origin = local.vault_public_origin
+
+  price_class = "PriceClass_100"
+}
