@@ -238,3 +238,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_retry_drain_depth" {
   tags = {
     Name        = "payzeno-ledger-production-retry-drain-depth"
     Service     = "payzeno-ledger"
+    Environment = "production"
+    Team        = "infra"
+    ManagedBy   = "terraform"
+    Repo        = "payzeno-infrastructure"
+    Ticket      = "PAY-2055"
+    Runbook     = "${local.ledger_runbook}#retry-backlog"
+    Severity    = "sev2"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Composite: any of the four above. This is what the #incidents room subscribes to so that a
+# sweep-and-drain cascade shows up as one incident rather than four separate pages three
+# minutes apart, which is what happened and which is part of why it took as long as it did.
+# ---------------------------------------------------------------------------

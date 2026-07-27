@@ -368,6 +368,42 @@ module "q_dlq_monitor" {
 # Queues — payzeno-billing-legacy consumers
 # ---------------------------------------------------------------------------
 
+module "q_billing_merchants" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-billing-merchants"
+  environment = local.environment
+  topic_arn   = module.topic_merchant_events.topic_arn
+
+  # MerchantEventListener (payzeno-billing-legacy). Three types, not four — the legacy
+  # biller has no concept of a verified bank account.
+  filter_policy = {
+    event_type = [
+      "merchant.created",
+      "merchant.updated",
+      "merchant.status_changed",
+    ]
+  }
+
+  visibility_timeout          = 120
+  age_alarm_threshold_seconds = 900
+  depth_alarm_threshold       = 500
+
+  alarm_actions    = [aws_sns_topic.payzeno_pager.arn]
+  runbook_base_url = local.runbook_base_url
+}
+
+# ---------------------------------------------------------------------------
+# ORPHAN. No subscription, no consumer, no reader in any repo.
+#
+# Created in month 4 for a design where the ledger drained settlement items through a queue
+# instead of the reconciliation_item table. That design became settlement.completed chunking
+# (PAY-2052) instead and this queue has never had a message in it. terraform keeps it happily
+# and it costs nothing, which is exactly why it is still here.
+#
+# If you are about to delete it: check the ledger's docs/adr first, then do, it is fine.
+# ---------------------------------------------------------------------------
+
 resource "aws_sqs_queue" "ledger_settlements" {
   name                      = "payzeno-ledger-settlements"
   message_retention_seconds = 345600

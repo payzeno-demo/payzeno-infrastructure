@@ -275,3 +275,18 @@ module "dlq_alarm" {
   metric_name = "ApproximateNumberOfMessagesVisible"
   statistic   = "Maximum"
   threshold   = 0
+
+  comparison_operator = "GreaterThanThreshold"
+  period              = 300
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    QueueName = aws_sqs_queue.dlq.name
+  }
+
+  alarm_actions = var.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#dead-letter-queue"
+  description   = "${local.dlq_name} is not empty. Something failed ${var.max_receive_count} times in a row."
+}
