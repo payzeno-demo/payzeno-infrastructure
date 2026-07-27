@@ -433,3 +433,9 @@ check "unique_discovery_dns" {
   }
 }
 
+check "canary_differs_only_in_retry_drain" {
+  assert {
+    condition = length(setsubtract(
+      toset([for k, v in merge(local.ledger_env, { RETRY_DRAIN_ENABLED = "true" }) : "${k}=${v}"]),
+      toset([for k, v in local.ledger_env : "${k}=${v}"]),
+    )) == 1

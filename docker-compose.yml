@@ -60,9 +60,11 @@ services:
       INTERNAL_API_SECRET: dev-internal-secret-do-not-use-in-prod
       BILLING_LEGACY_USER: payzeno-api
       BILLING_LEGACY_PASSWORD: dev-legacy-password
+      VAULT_PUBLIC_URL: http://localhost:8099
       VAULT_API_KEY: dev-vault-key
 
       WORLDFLOW_API_KEY: dev-worldflow-key
+      NORDPAY_BASE_URL: http://payzeno-acquirer-sandbox:9101
       NORDPAY_API_KEY: dev-nordpay-key
       PROCESSOR_DEFAULT_ACQUIRER: worldflow
 
@@ -250,6 +252,7 @@ services:
     volumes: ["payzeno-postgres-api-data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payzeno -d payzeno_api"]
+      interval: 5s
       timeout: 3s
       retries: 20
 

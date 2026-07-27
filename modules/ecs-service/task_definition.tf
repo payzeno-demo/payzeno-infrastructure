@@ -143,3 +143,18 @@ resource "aws_ecs_task_definition" "this" {
   }
 
   tags = merge(module.names.tags, {
+    Name = module.names.id
+  })
+
+  lifecycle {
+    precondition {
+      # The sidecar terminates TLS-less HTTP from the ALB and carries the ^/internal/ deny
+      # in the container plane. An ALB-fronted task without it is a service whose internal
+      # routes are reachable from the public listener.
+      condition     = var.enable_nginx_sidecar == (var.alb_listener_arn != null)
+      error_message = "PAYZENO_INFRA_PRECONDITION: the nginx sidecar is present iff the service is ALB-fronted. ${var.service} has enable_nginx_sidecar=${var.enable_nginx_sidecar} and alb_listener_arn=${var.alb_listener_arn == null ? "null" : "set"}. Without the sidecar, /internal/v1/* is reachable from the public listener; with it and no ALB, port 80 in the task listens for nobody."
+    }
+
+    precondition {
+      # Every name in var.secrets must actually make it into secrets[]. This has failed
+      # exactly once, when a caller passed a key whose ARN resolved to null through a
