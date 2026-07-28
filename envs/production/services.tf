@@ -439,3 +439,9 @@ check "canary_differs_only_in_retry_drain" {
       toset([for k, v in merge(local.ledger_env, { RETRY_DRAIN_ENABLED = "true" }) : "${k}=${v}"]),
       toset([for k, v in local.ledger_env : "${k}=${v}"]),
     )) == 1
+    error_message = "PAYZENO_INFRA_DRIFT: module.payzeno_ledger_canary is supposed to differ from module.payzeno_ledger by exactly one environment variable (RETRY_DRAIN_ENABLED). It now differs by more, which means one of them has drifted and nobody knows which is the real configuration."
+  }
+}
+
+output "api_target_group_arn" {
+  description = "Consumed by routing.tf's ALB rules."
