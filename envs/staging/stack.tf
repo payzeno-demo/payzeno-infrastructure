@@ -668,3 +668,17 @@ module "payzeno_console" {
 
   price_class = "PriceClass_100"
 }
+
+locals {
+  console_build_args = {
+    VITE_PAYZENO_API_URL             = "${local.api_origin}/v1"
+    VITE_WS_URL                      = "wss://${local.api_domain}/ws/notifications"
+    VITE_VAULT_PUBLIC_URL            = local.vault_public_origin
+    VITE_ENVIRONMENT                 = "staging"
+    VITE_SENTRY_DSN                  = "https://8a2d1f47c9e04b6b@o412.ingest.sentry.io/5502"
+    VITE_FEATURE_SETTLEMENT_EXPLORER = "true"
+
+    # staging only. The dispute evidence upload flow is behind this and it is not finished —
+    # production is still "false" and stays that way until the evidence retention question
+    # is answered. Do not promote this by copying the block.
+    VITE_FEATURE_DISPUTE_EVIDENCE_V2 = "true"
