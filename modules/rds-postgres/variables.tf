@@ -10,6 +10,11 @@ variable "service" {
   type        = string
 }
 
+variable "environment" {
+  description = "production | staging."
+  type        = string
+}
+
 variable "database_name" {
   description = "Logical database created on the instance. payzeno_api | payzeno_ledger. Underscores, not hyphens — Postgres identifier rules, and data-model.md uses these names."
   type        = string
@@ -63,6 +68,33 @@ variable "parameters" {
   description = "Extra Postgres parameters, merged over the module's defaults (which include pg_stat_statements and the connection budget). Caller wins."
   type        = map(string)
   default     = {}
+}
+
+variable "max_connections" {
+  description = <<-EOT
+    Postgres max_connections. Not the instance-class default — a derived number.
+
+    The rule (interfaces.md §3.1 rule 4): at least 3 x the owning service's
+    DATABASE_POOL_SIZE. Every application task holds a full pool, and on top of the pools
+    there are the sweep jobs, alembic during a deploy, and whoever is in psql looking at
+    why the sweep is slow. The ledger runs DATABASE_POOL_SIZE=20 across 4 tasks.
+
+    The cross-variable form of this check (>= 3 x client_pool_size) is a precondition on
+    aws_db_instance.this, because terraform 1.7 will not let a variable validation reference
+    another variable. The floor below is the same rule against the contracted pool size of 20.
+  EOT
+  type        = number
+  default     = 200
+
+  validation {
+    condition     = var.max_connections >= 60
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: max_connections must be at least 60 — 3 x the contracted DATABASE_POOL_SIZE of 20. See interfaces.md §3.1 rule 4."
+  }
+
+  validation {
+    condition     = var.max_connections <= 5000
+    error_message = "PAYZENO_INFRA_INVALID_INPUT: max_connections above 5000 is a pgbouncer ticket, not a parameter group change."
+  }
 }
 
 variable "client_pool_size" {
@@ -143,6 +175,12 @@ variable "snapshot_suffix" {
   description = "Suffix on the final snapshot identifier. Bump it if you ever need to destroy and recreate with the same name; RDS refuses to reuse a snapshot id."
   type        = string
   default     = "v1"
+}
+
+variable "cpu_alarm_threshold" {
+  description = "CPU percentage the db-cpu-high alarm fires above. Production is tighter than staging."
+  type        = number
+  default     = 80
 }
 
 variable "connections_alarm_fraction" {

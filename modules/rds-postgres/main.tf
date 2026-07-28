@@ -205,3 +205,59 @@ resource "aws_db_instance" "this" {
       condition     = var.environment != "production" || var.backup_retention_days >= 14
       error_message = "PAYZENO_INFRA_PRECONDITION: production keeps at least 14 days of backups. A duplicate-settlement investigation reaches back further than seven days — we know, we did one."
     }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Alarms
+# ---------------------------------------------------------------------------
+
+module "cpu_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.service
+  environment = var.environment
+  name        = "db-cpu-high"
+  namespace   = "AWS/RDS"
+  metric_name = "CPUUtilization"
+  statistic   = "Average"
+  threshold   = var.cpu_alarm_threshold
+
+  period             = 300
+  evaluation_periods = 3
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.identifier
+  }
+
+  alarm_actions = var.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#database-cpu-high"
+  description   = "${var.service}'s Postgres instance is above ${var.cpu_alarm_threshold}% CPU in ${var.environment}."
+}
+
+# arc PERF, then retuned during arc INC. The threshold is a fraction of max_connections
+# rather than a number, so raising the pool size cannot silently make this alarm unreachable.
+module "connections_alarm" {
+  source = "../cloudwatch-alarm"
+
+  service     = var.service
+  environment = var.environment
+  name        = "db-connections-high"
+  namespace   = "AWS/RDS"
+  metric_name = "DatabaseConnections"
+  statistic   = "Maximum"
+  threshold   = floor(var.max_connections * var.connections_alarm_fraction)
+
+  period              = 60
+  evaluation_periods  = 5
+  datapoints_to_alarm = 3
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.identifier
+  }
+
+  alarm_actions = var.alarm_actions
+  runbook_url   = "${var.runbook_base_url}/oncall.md#database-connections-high"
+  description   = "${var.service} is holding more than ${floor(var.max_connections * var.connections_alarm_fraction)} of ${var.max_connections} Postgres connections in ${var.environment}."
+}
