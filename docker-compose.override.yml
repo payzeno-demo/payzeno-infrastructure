@@ -77,6 +77,11 @@ services:
   # -------------------------------------------------------------------------
   payzeno-api:
     ports:
+      - "8080:8080"
+      - "9229:9229"       # node --inspect
+
+  payzeno-billing-legacy:
+    ports:
       - "8090:8090"
       - "5005:5005"       # JDWP
     environment:

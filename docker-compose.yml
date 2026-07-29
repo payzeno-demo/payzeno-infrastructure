@@ -203,6 +203,8 @@ services:
 
       BILLING_INVOICE_PREFIX: LOCAL
       BILLING_DUNNING_ENABLED: "false"
+      BILLING_LEDGER_EXPORT_ENABLED: "true"
+
       # The legacy half of arc MIG. These two and the api's FLAG_LEDGER_OWNS_* must agree —
       # a half-flipped boundary means invoices exist in two places and agree in neither.
       BILLING_FLAG_LEDGER_OWNS_INVOICES: "false"
@@ -248,6 +250,7 @@ services:
     ports: ["5432:5432"]
     environment:
       POSTGRES_USER: payzeno
+      POSTGRES_PASSWORD: payzeno
       POSTGRES_DB: payzeno_api
     volumes: ["payzeno-postgres-api-data:/var/lib/postgresql/data"]
     healthcheck:
@@ -285,6 +288,7 @@ services:
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-upayzeno", "-ppayzeno"]
       interval: 5s
+      timeout: 3s
       retries: 30
 
   payzeno-redis:
