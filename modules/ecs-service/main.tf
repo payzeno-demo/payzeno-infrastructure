@@ -326,6 +326,11 @@ resource "aws_service_discovery_service" "this" {
   tags = module.names.tags
 }
 
+data "aws_service_discovery_dns_namespace" "internal" {
+  name = "${var.environment}.payzeno.internal"
+  type = "DNS_PRIVATE"
+}
+
 # DEAD: the pre-Service-Connect Cloud Map registry. Kept at count = 0 because two services
 # still have the old ARNs in their state file and removing the block entirely produced a
 # destroy plan nobody was going to approve on a Friday. It creates nothing.

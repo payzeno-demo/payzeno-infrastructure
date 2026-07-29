@@ -445,3 +445,9 @@ check "canary_differs_only_in_retry_drain" {
 
 output "api_target_group_arn" {
   description = "Consumed by routing.tf's ALB rules."
+  value       = module.payzeno_api.target_group_arn
+}
+
+output "ledger_service_name" {
+  description = "ECS service name for the ledger. The runbook's scale-down command needs it and you will be typing it at 02:00."
+  value       = module.payzeno_ledger.service_name

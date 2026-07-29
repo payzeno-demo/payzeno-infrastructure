@@ -158,3 +158,17 @@ resource "aws_ecs_task_definition" "this" {
     precondition {
       # Every name in var.secrets must actually make it into secrets[]. This has failed
       # exactly once, when a caller passed a key whose ARN resolved to null through a
+      # try() and the container came up with the variable unset.
+      condition = length(setsubtract(
+        keys(var.secrets),
+        [for s in local.container_secrets : s.name]
+      )) == 0
+      error_message = "PAYZENO_INFRA_PRECONDITION: a key in var.secrets did not reach the task definition's secrets[] block. Missing: ${join(", ", setsubtract(keys(var.secrets), [for s in local.container_secrets : s.name]))}."
+    }
+
+    precondition {
+      condition     = var.environment != "production" || var.log_retention_days <= 90
+      error_message = "PAYZENO_INFRA_PRECONDITION: production log retention is capped at 90 days. Request logs are PCI scope — PAY-1761."
+    }
+  }
+}
