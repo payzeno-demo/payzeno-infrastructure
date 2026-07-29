@@ -682,3 +682,17 @@ locals {
     # production is still "false" and stays that way until the evidence retention question
     # is answered. Do not promote this by copying the block.
     VITE_FEATURE_DISPUTE_EVIDENCE_V2 = "true"
+  }
+}
+
+resource "aws_ssm_parameter" "console_build_args" {
+  for_each = local.console_build_args
+
+  name  = "/payzeno/staging/payzeno-console/${each.key}"
+  type  = "String"
+  value = each.value
+
+  description = "Build-time configuration for payzeno-console (staging). Read by the console's CI, baked in by Vite. Takes effect on the next build."
+
+  tags = {
+    Name    = each.key
