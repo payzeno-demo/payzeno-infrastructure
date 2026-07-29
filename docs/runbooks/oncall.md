@@ -176,6 +176,36 @@ while the drain is still working — and that is the overlap.
 
 ---
 
+## queue-backlog
+
+**Alarms:** `*-oldest-message-age`, `*-queue-depth`.
+
+Age says nothing is being consumed. Depth says consumption is happening and losing ground.
+They are different problems.
+
+```bash
+QUEUE=payzeno-api-ledger      # or whichever the alarm named
+
+aws sqs get-queue-attributes \
+  --queue-url "$(aws sqs get-queue-url --queue-name $QUEUE --query QueueUrl --output text)" \
+  --attribute-names ApproximateNumberOfMessagesVisible \
+                    ApproximateNumberOfMessagesNotVisible \
+                    ApproximateAgeOfOldestMessage
+```
+
+- **`NotVisible` high, `Visible` flat** — consumers are picking messages up and not deleting
+  them. The handler is throwing. Read the consumer's logs.
+- **`Visible` high, `NotVisible` near zero** — nothing is consuming. Check the service is
+  running ([tasks-below-desired](#tasks-below-desired)) and that its task role still has the
+  queue in its policy.
+- **Both climbing** — the producer is faster than the consumer. Scale the consumer.
+
+Every consumer is idempotent on `envelope.id`, so redelivery is safe. Purging a queue is
+**not** safe and is never the answer at 02:00 — those are real events and nothing replays
+them.
+
+---
+
 ## dead-letter-queue
 
 **Alarm:** `*-dlq-not-empty`.

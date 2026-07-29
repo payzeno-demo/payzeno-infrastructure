@@ -253,3 +253,18 @@ resource "aws_cloudwatch_metric_alarm" "ledger_retry_drain_depth" {
 # sweep-and-drain cascade shows up as one incident rather than four separate pages three
 # minutes apart, which is what happened and which is part of why it took as long as it did.
 # ---------------------------------------------------------------------------
+
+resource "aws_cloudwatch_composite_alarm" "ledger_settlement_integrity" {
+  alarm_name        = "payzeno-ledger-production-settlement-integrity"
+  alarm_description = "Any settlement-integrity alarm is firing on payzeno-ledger. Start at ${local.ledger_runbook}#duplicate-settlement and work down."
+
+  alarm_rule = join(" OR ", [
+    "ALARM(${aws_cloudwatch_metric_alarm.ledger_duplicate_settlement.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.ledger_batch_overposted.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.ledger_reconciliation_lag.alarm_name})",
+    "ALARM(${aws_cloudwatch_metric_alarm.ledger_retry_drain_depth.alarm_name})",
+  ])
+
+  alarm_actions = local.ledger_alarm_actions
+
+  tags = {
