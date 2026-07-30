@@ -451,3 +451,9 @@ output "api_target_group_arn" {
 output "ledger_service_name" {
   description = "ECS service name for the ledger. The runbook's scale-down command needs it and you will be typing it at 02:00."
   value       = module.payzeno_ledger.service_name
+}
+
+output "ledger_canary_service_name" {
+  description = "ECS service name for the retry-drain canary — the one task with RETRY_DRAIN_ENABLED=true."
+  value       = module.payzeno_ledger_canary.service_name
+}
