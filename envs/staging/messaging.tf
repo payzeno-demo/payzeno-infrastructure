@@ -73,6 +73,28 @@ module "topic_billing_events" {
 # Queues
 # ---------------------------------------------------------------------------
 
+module "q_ledger_payments" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-ledger-payments"
+  environment = local.environment
+  topic_arn   = module.topic_payments_events.topic_arn
+
+  filter_policy = {
+    event_type = [
+      "payment.authorized",
+      "payment.captured",
+      "payment.canceled",
+      "refund.created",
+      "dispute.opened",
+      "dispute.closed",
+    ]
+  }
+
+  visibility_timeout    = 300
+  depth_alarm_threshold = 200
+}
+
 module "q_ledger_merchants" {
   source = "../../modules/sqs-queue"
 
@@ -190,6 +212,21 @@ resource "aws_sns_topic_subscription" "console_notifications_payments" {
   filter_policy = jsonencode({
     event_type = ["dispute.opened"]
   })
+}
+
+module "q_api_billing" {
+  source = "../../modules/sqs-queue"
+
+  name        = "payzeno-api-billing"
+  environment = local.environment
+  topic_arn   = module.topic_billing_events.topic_arn
+
+  filter_policy = {
+    event_type = ["invoice.issued"]
+  }
+
+  visibility_timeout    = 60
+  depth_alarm_threshold = 100
 }
 
 module "q_billing_merchants" {

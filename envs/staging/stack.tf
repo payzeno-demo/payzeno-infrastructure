@@ -654,3 +654,59 @@ resource "aws_vpc_security_group_ingress_rule" "cache_api_from_api" {
 # ---------------------------------------------------------------------------
 
 module "payzeno_console" {
+  source = "../../modules/static-site"
+
+  service     = "payzeno-console"
+  environment = local.environment
+
+  domain_name         = local.console_domain
+  acm_certificate_arn = data.aws_acm_certificate.payzeno_cloudfront.arn
+  spa_fallback        = true
+
+  api_origin          = local.api_origin
+  vault_public_origin = local.vault_public_origin
+
+  price_class = "PriceClass_100"
+}
+
+locals {
+  console_build_args = {
+    VITE_PAYZENO_API_URL             = "${local.api_origin}/v1"
+    VITE_WS_URL                      = "wss://${local.api_domain}/ws/notifications"
+    VITE_VAULT_PUBLIC_URL            = local.vault_public_origin
+    VITE_ENVIRONMENT                 = "staging"
+    VITE_SENTRY_DSN                  = "https://8a2d1f47c9e04b6b@o412.ingest.sentry.io/5502"
+    VITE_FEATURE_SETTLEMENT_EXPLORER = "true"
+
+    # staging only. The dispute evidence upload flow is behind this and it is not finished —
+    # production is still "false" and stays that way until the evidence retention question
+    # is answered. Do not promote this by copying the block.
+    VITE_FEATURE_DISPUTE_EVIDENCE_V2 = "true"
+  }
+}
+
+resource "aws_ssm_parameter" "console_build_args" {
+  for_each = local.console_build_args
+
+  name  = "/payzeno/staging/payzeno-console/${each.key}"
+  type  = "String"
+  value = each.value
+
+  description = "Build-time configuration for payzeno-console (staging). Read by the console's CI, baked in by Vite. Takes effect on the next build."
+
+  tags = {
+    Name    = each.key
+    Service = "payzeno-console"
+    Rebuild = "required"
+  }
+}
+
+output "alb_dns_name" {
+  description = "Staging ALB hostname."
+  value       = aws_lb.public.dns_name
+}
+
+output "console_distribution_id" {
+  description = "Staging CloudFront distribution id."
+  value       = module.payzeno_console.distribution_id
+}
