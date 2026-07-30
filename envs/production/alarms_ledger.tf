@@ -268,3 +268,18 @@ resource "aws_cloudwatch_composite_alarm" "ledger_settlement_integrity" {
   alarm_actions = local.ledger_alarm_actions
 
   tags = {
+    Name        = "payzeno-ledger-production-settlement-integrity"
+    Service     = "payzeno-ledger"
+    Environment = "production"
+    Team        = "infra"
+    ManagedBy   = "terraform"
+    Repo        = "payzeno-infrastructure"
+    Ticket      = "PAY-2055"
+    Runbook     = "${local.ledger_runbook}#duplicate-settlement"
+  }
+}
+
+output "ledger_duplicate_settlement_alarm_name" {
+  description = "Named in payzeno-ledger/docs/postmortems/2041-duplicate-settlement.md. Do not rename without updating it."
+  value       = aws_cloudwatch_metric_alarm.ledger_duplicate_settlement.alarm_name
+}

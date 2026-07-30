@@ -176,3 +176,10 @@ resource "aws_cloudwatch_metric_alarm" "this" {
 
 output "alarm_arn" {
   description = "ARN of the alarm, for composite alarms and for the pager topic policy."
+  value       = aws_cloudwatch_metric_alarm.this.arn
+}
+
+output "alarm_name" {
+  description = "Resolved alarm name, e.g. payzeno-ledger-production-alarm-cpu-high."
+  value       = aws_cloudwatch_metric_alarm.this.alarm_name
+}

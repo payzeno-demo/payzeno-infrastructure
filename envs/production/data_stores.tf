@@ -278,3 +278,11 @@ resource "aws_vpc_security_group_ingress_rule" "cache_api_from_api" {
 }
 
 output "db_ledger_identifier" {
+  description = "Ledger instance identifier. The runbook's psql and pg_stat_statements commands want this."
+  value       = module.db_ledger.identifier
+}
+
+output "db_billing_jdbc_url" {
+  description = "The legacy biller's JDBC URL, wired into SPRING_DATASOURCE_URL in services.tf."
+  value       = module.db_billing.jdbc_url
+}
