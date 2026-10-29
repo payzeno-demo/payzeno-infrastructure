@@ -62,6 +62,19 @@ services:
       BILLING_LEGACY_PASSWORD: dev-legacy-password
       VAULT_PUBLIC_URL: http://localhost:8099
       VAULT_API_KEY: dev-vault-key
+      # Origin of the hosted checkout page (nginx/payzeno-pay.conf). Session URLs and the
+      # default 3-D Secure return path are built from it.
+      CHECKOUT_PUBLIC_URL: http://pay.localhost
+      # RFC platform-v2. SMTP goes to the local mail catcher (sim-world); SES's SMTP endpoint in AWS.
+      SMTP_HOST: sim-mail
+      SMTP_PORT: "1025"
+      EMAIL_FROM: "Payzeno <no-reply@payzeno.com>"
+      CONSOLE_PUBLIC_URL: http://localhost
+      ADMIN_PUBLIC_URL: http://admin.localhost
+      KYC_DOCUMENTS_BUCKET: payzeno-local-kyc-documents
+      # The FX rates vendor. Locally the simulated feed in sim-world.
+      FX_PROVIDER_URL: http://sim-fx:3200
+      FX_CHECKOUT_MARKUP_BPS: "200"
 
       # The acquirer sandbox is declared in docker-compose.override.yml, not here — it is a
       # local-dev fake and there is no production analogue to keep it honest against.
@@ -132,6 +145,8 @@ services:
       AWS_ENDPOINT_URL: http://payzeno-localstack:4566
       WORLDFLOW_BASE_URL: http://payzeno-acquirer-sandbox:9100
       NORDPAY_BASE_URL: http://payzeno-acquirer-sandbox:9101
+      FX_PROVIDER_URL: http://sim-fx:3200
+      FX_PAYOUT_MARKUP_BPS: "100"
 
       # 20 above is not arbitrary: reconcile_batch holds three sessions in one pass and the
       # retry drain takes a fourth. modules/rds-postgres asserts max_connections >= 3x this.
@@ -236,6 +251,19 @@ services:
       VITE_SENTRY_DSN: ""
       VITE_FEATURE_SETTLEMENT_EXPLORER: "true"
       VITE_FEATURE_DISPUTE_EVIDENCE_V2: "false"
+    depends_on: [payzeno-api]
+
+  # -------------------------------------------------------------------------
+  # payzeno-checkout — the hosted payment page and embedded checkout (pay.payzeno.com).
+  # React/Vite like the console, and the same build-time VITE_* rule applies. Served on 8083
+  # and proxied by nginx/payzeno-pay.conf; in AWS it will be S3 + CloudFront like the console.
+  # -------------------------------------------------------------------------
+  payzeno-checkout:
+    build: { context: ../payzeno-checkout }
+    environment:
+      VITE_PAYZENO_API_URL: /v1
+      VITE_VAULT_PUBLIC_URL: http://localhost:8099
+      VITE_ENVIRONMENT: local
     depends_on: [payzeno-api]
 
   # -------------------------------------------------------------------------

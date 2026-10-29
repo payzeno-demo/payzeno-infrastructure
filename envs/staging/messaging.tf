@@ -168,6 +168,9 @@ resource "aws_sns_topic_subscription" "api_webhooks_payments" {
 
   filter_policy = jsonencode({
     event_type = [
+      "payment.authorized",
+      "payment.captured",
+      "payment.canceled",
       "payment.failed",
       "refund.succeeded",
       "refund.failed",

@@ -183,6 +183,15 @@ locals {
     VAULT_BASE_URL          = "http://payzeno-vault.staging.payzeno.internal:8099"
     VAULT_PUBLIC_URL        = local.vault_public_origin
     BILLING_LEGACY_USER     = "payzeno_api"
+    CHECKOUT_PUBLIC_URL     = "https://pay.staging.payzeno.com"
+    CONSOLE_PUBLIC_URL      = "https://console.staging.payzeno.com"
+    ADMIN_PUBLIC_URL        = "https://admin.staging.payzeno.com"
+    KYC_DOCUMENTS_BUCKET    = "payzeno-staging-kyc-documents"
+    EMAIL_FROM              = "Payzeno Staging <no-reply@staging.payzeno.com>"
+    SMTP_HOST               = "email-smtp.eu-west-1.amazonaws.com"
+    SMTP_PORT               = "587"
+    FX_PROVIDER_URL         = "https://sandbox.openrates.example/v1"
+    FX_CHECKOUT_MARKUP_BPS  = "200"
 
     WORLDFLOW_BASE_URL = local.worldflow_base_url
     NORDPAY_BASE_URL   = local.nordpay_base_url
@@ -236,6 +245,8 @@ locals {
     AWS_REGION = local.region
 
     WORLDFLOW_BASE_URL              = local.worldflow_base_url
+    FX_PROVIDER_URL                 = "https://sandbox.openrates.example/v1"
+    FX_PAYOUT_MARKUP_BPS            = "100"
     WORLDFLOW_BREAKER_THRESHOLD_PCT = "50"
     WORLDFLOW_BREAKER_WINDOW        = "60"
     WORLDFLOW_BREAKER_RESET_SECONDS = "30"

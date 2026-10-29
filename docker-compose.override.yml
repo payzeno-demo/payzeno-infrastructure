@@ -18,6 +18,20 @@
 #
 # Cold file: two commits since month 1, plus whatever the acquirer sandbox image bump was.
 
+# -------------------------------------------------------------------------
+# Simulated time (RFC platform-v2 §10). Every container that reasons about time runs under
+# libfaketime, reading the offset sim-world's clock writes to the shared `sim_faketime`
+# volume (`make world-up` in sim-world creates and fills it; bring the world up first or a
+# container keeps real time for its whole life). Offset `+0` is real time. Monotonic clocks
+# stay real so timers and timeouts behave. Postgres is faked too: the app and the database
+# must agree on `now()`.
+# -------------------------------------------------------------------------
+x-faketime-env: &faketime-env
+  FAKETIME_TIMESTAMP_FILE: /faketime/offset
+  FAKETIME_CACHE_DURATION: "1"
+  FAKETIME_DONT_FAKE_MONOTONIC: "1"
+  FAKETIME_DISABLE_SHM: "1"
+
 services:
   # -------------------------------------------------------------------------
   # The fake acquirer. Two ports because worldflow and nordpay are two different upstreams
@@ -36,6 +50,9 @@ services:
       # 0 by default. Set it to 2000 and the ledger's circuit breakers actually trip, which
       # is the only way to exercise WORLDFLOW_BREAKER_* without waiting for a real outage.
       SANDBOX_LATENCY_MS: "0"
+      <<: *faketime-env
+      LD_PRELOAD: /faketime/musl/libfaketime.so.1
+    volumes: ["sim_faketime:/faketime:ro"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9100/healthz"]
       interval: 10s
@@ -54,6 +71,13 @@ services:
   #      into /usr/share/nginx/html; the shared named volume below is how nginx gets it.
   # -------------------------------------------------------------------------
   payzeno-nginx:
+    # nginx resolves every upstream host when it starts, so "started" is not enough.
+    depends_on: !override
+      payzeno-api:            { condition: service_healthy }
+      payzeno-console:        { condition: service_healthy }
+      payzeno-checkout:       { condition: service_healthy }
+      payzeno-ledger:         { condition: service_healthy }
+      payzeno-billing-legacy: { condition: service_healthy }
     volumes:
       - ./nginx:/etc/nginx/conf.d:ro
       - payzeno-console-dist:/srv/console:ro
@@ -63,8 +87,14 @@ services:
         mode: 0444
 
   payzeno-console:
+    # The base file's `context: ../payzeno-console` cannot resolve `workspace:*`; the
+    # Dockerfile wants the workspace root (see its header). Same for payzeno-api below.
+    build: { context: .., dockerfile: payzeno-console/Dockerfile }
     volumes:
       - payzeno-console-dist:/usr/share/nginx/html
+
+  payzeno-checkout:
+    build: { context: .., dockerfile: payzeno-checkout/Dockerfile }
 
   payzeno-localstack:
     configs:
@@ -76,21 +106,105 @@ services:
   # Debug ports. Attach a debugger without editing the base file.
   # -------------------------------------------------------------------------
   payzeno-api:
+    build: { context: .., dockerfile: payzeno-api/Dockerfile }
     ports:
       - "8080:8080"
       - "9229:9229"       # node --inspect
+    environment:
+      # localstack accepts any credentials but the SDK refuses to sign without some.
+      # aws.config.ts adds these for SNS/SQS; WebhookSecretService builds its own KMS client
+      # and reads them from the environment.
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      <<: *faketime-env
+      LD_PRELOAD: /faketime/glibc/libfaketime.so.1
+    volumes: ["sim_faketime:/faketime:ro"]
+    # The deploy pipeline runs migrations as a separate task before the rollout. Locally
+    # the container does it on start, against the same data-source the CLI uses.
+    command:
+      - sh
+      - -c
+      - node node_modules/typeorm/cli.js migration:run --transaction each -d dist/migrations/data-source.js && exec node dist/main.js
 
+  payzeno-ledger:
+    build:
+      additional_contexts:
+        contracts_py: ../payzeno-contracts/python
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      # There is no mTLS hop in compose, so nothing adds X-Payzeno-Client-Cert-Subject. The
+      # shared secret is still checked. Never set this in envs/.
+      INTERNAL_AUTH_REQUIRE_CLIENT_CERT: "false"
+      <<: *faketime-env
+      LD_PRELOAD: /faketime/glibc/libfaketime.so.1
+    volumes: ["sim_faketime:/faketime:ro"]
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000
+        --no-access-log --proxy-headers --forwarded-allow-ips '*'
+
+  # A host Postgres usually owns 5432 on a dev machine. The containers still talk on 5432.
+  payzeno-postgres-api:
+    ports: !override ["15432:5432"]
+    environment:
+      <<: *faketime-env
+      LD_PRELOAD: /faketime/musl/libfaketime.so.1
+    volumes: ["sim_faketime:/faketime:ro"]
+
+  payzeno-postgres-ledger:
+    environment:
+      <<: *faketime-env
+      LD_PRELOAD: /faketime/musl/libfaketime.so.1
+    volumes: ["sim_faketime:/faketime:ro"]
+
+  payzeno-vault:
+    environment:
+      <<: *faketime-env
+      LD_PRELOAD: /faketime/musl/libfaketime.so.1
+    volumes: ["sim_faketime:/faketime:ro"]
+
+  # -------------------------------------------------------------------------
+  # payzeno-billing-legacy is not built locally yet: payzeno-contracts-java 3.4.0 only
+  # exists on the internal Nexus, and the in-repo java/ tree no longer matches what the
+  # service compiles against. Until it does, a stub answers on the same name and port so
+  # nginx resolves its upstream and callers get an honest 503 instead of a DNS error.
+  # -------------------------------------------------------------------------
   payzeno-billing-legacy:
+    image: nginx:1.25-alpine
+    build: !reset null
     ports:
       - "8090:8090"
-      - "5005:5005"       # JDWP
-    environment:
-      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    configs:
+      - source: billing-legacy-stub
+        target: /etc/nginx/conf.d/default.conf
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   payzeno-console-dist:
+  sim_faketime:
+    external: true
+    name: sim_faketime
 
 configs:
+  billing-legacy-stub:
+    content: |
+      server {
+        listen 8090;
+        location = /healthz { default_type text/plain; return 200 "ok\n"; }
+        location / {
+          default_type application/json;
+          return 503 '{"error":{"code":"service_unavailable","message":"payzeno-billing-legacy is not running in this environment"}}';
+        }
+      }
+
   # A minimal main config whose http block loads nginx/nginx.conf and nothing else. See the
   # payzeno-nginx note above for why the stock one does not work here.
   nginx-main:
@@ -115,6 +229,8 @@ configs:
   # Names are frozen by events.ts's header table and api-surface.md §14. There is no prefix:
   # localstack is nobody's environment, so the queue is `payzeno-api-ledger`, not
   # `payzeno-api-ledger-local`.
+  # Every `$` below is written `$$`: compose interpolates inline config content, and a bare
+  # `$AWS` became an empty string, so the first line run was ` sns create-topic`.
   localstack-init:
     content: |
       #!/bin/sh
@@ -123,26 +239,32 @@ configs:
 
       echo "--> topics"
       for t in payzeno-payments-events payzeno-ledger-events payzeno-merchant-events payzeno-billing-events; do
-        $AWS sns create-topic --name "$t" >/dev/null
+        $$AWS sns create-topic --name "$$t" >/dev/null
       done
 
       echo "--> queues (+ dlq for each, redrive maxReceiveCount 5)"
       for q in payzeno-ledger-payments payzeno-ledger-merchants payzeno-api-ledger \
                payzeno-api-webhooks payzeno-console-notifications payzeno-api-billing \
                payzeno-billing-merchants payzeno-dlq-monitor; do
-        $AWS sqs create-queue --queue-name "$q-dlq" >/dev/null
-        DLQ_ARN=$($AWS sqs get-queue-attributes --queue-url "http://localhost:4566/000000000000/$q-dlq" \
+        $$AWS sqs create-queue --queue-name "$$q-dlq" >/dev/null
+        DLQ_ARN=$$($$AWS sqs get-queue-attributes --queue-url "http://localhost:4566/000000000000/$$q-dlq" \
                     --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)
-        $AWS sqs create-queue --queue-name "$q" \
-          --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"$DLQ_ARN\\\",\\\"maxReceiveCount\\\":\\\"5\\\"}\"}" >/dev/null
+        $$AWS sqs create-queue --queue-name "$$q" \
+          --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"$$DLQ_ARN\\\",\\\"maxReceiveCount\\\":\\\"5\\\"}\"}" >/dev/null
       done
 
+      # The filter policy is set after subscribing: as an --attributes value the JSON is read
+      # as CLI shorthand, the `{` is rejected, and `set -e` ends the bootstrap right here.
       subscribe() {   # subscribe <topic> <queue> <event_type json array>
-        $AWS sns subscribe \
-          --topic-arn "arn:aws:sns:eu-west-1:000000000000:$1" \
+        SUB_ARN=$$($$AWS sns subscribe \
+          --topic-arn "arn:aws:sns:eu-west-1:000000000000:$$1" \
           --protocol sqs \
-          --notification-endpoint "arn:aws:sqs:eu-west-1:000000000000:$2" \
-          --attributes "FilterPolicy={\"event_type\":$3},FilterPolicyScope=MessageAttributes" >/dev/null
+          --notification-endpoint "arn:aws:sqs:eu-west-1:000000000000:$$2" \
+          --return-subscription-arn --query SubscriptionArn --output text)
+        $$AWS sns set-subscription-attributes --subscription-arn "$$SUB_ARN" \
+          --attribute-name FilterPolicyScope --attribute-value MessageAttributes
+        $$AWS sns set-subscription-attributes --subscription-arn "$$SUB_ARN" \
+          --attribute-name FilterPolicy --attribute-value "{\"event_type\":$$3}"
       }
 
       echo "--> subscriptions"
@@ -155,7 +277,7 @@ configs:
       subscribe payzeno-ledger-events payzeno-api-webhooks \
         '["payout.scheduled","settlement.item_settled"]'
       subscribe payzeno-payments-events payzeno-api-webhooks \
-        '["payment.failed","refund.succeeded","refund.failed","dispute.evidence_submitted"]'
+        '["payment.authorized","payment.captured","payment.canceled","payment.failed","refund.succeeded","refund.failed","dispute.evidence_submitted"]'
       subscribe payzeno-billing-events payzeno-api-billing \
         '["invoice.issued"]'
       subscribe payzeno-merchant-events payzeno-billing-merchants \
@@ -175,9 +297,11 @@ configs:
       # they are audit-trail only. Do not "fix" it.
 
       echo "--> buckets, kms alias, secrets"
-      $AWS s3 mb s3://payzeno-local-service-config >/dev/null || true
-      KEY_ID=$($AWS kms create-key --description "payzeno webhook signing KEK (local)" --query 'KeyMetadata.KeyId' --output text)
-      $AWS kms create-alias --alias-name alias/payzeno-webhook-kek --target-key-id "$KEY_ID" >/dev/null || true
-      $AWS secretsmanager create-secret --name payzeno/local/webhook-signing-kek --secret-string "local-kek" >/dev/null || true
+      $$AWS s3 mb s3://payzeno-local-service-config >/dev/null || true
+      # RFC platform-v2 §3: KYC documents. envs/*/storage.tf creates payzeno-<env>-kyc-documents.
+      $$AWS s3 mb s3://payzeno-local-kyc-documents >/dev/null || true
+      KEY_ID=$$($$AWS kms create-key --description "payzeno webhook signing KEK (local)" --query 'KeyMetadata.KeyId' --output text)
+      $$AWS kms create-alias --alias-name alias/payzeno-webhook-kek --target-key-id "$$KEY_ID" >/dev/null || true
+      $$AWS secretsmanager create-secret --name payzeno/local/webhook-signing-kek --secret-string "local-kek" >/dev/null || true
 
       echo "--> localstack bootstrap complete"
