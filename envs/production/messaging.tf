@@ -233,7 +233,7 @@ module "q_api_webhooks" {
   # WebhookFanoutConsumer (payzeno-api) — the only writer of webhook_event.
   #
   # This queue is subscribed to BOTH payments and ledger, same as console-notifications:
-  # payment.failed / refund.* / dispute.evidence_submitted are on payments, and
+  # payment.* / refund.* / dispute.evidence_submitted are on payments, and
   # payout.scheduled / settlement.item_settled are on ledger. The second subscription is
   # aws_sns_topic_subscription.api_webhooks_payments below.
   filter_policy = {
@@ -265,6 +265,9 @@ resource "aws_sns_topic_subscription" "api_webhooks_payments" {
 
   filter_policy = jsonencode({
     event_type = [
+      "payment.authorized",
+      "payment.captured",
+      "payment.canceled",
       "payment.failed",
       "refund.succeeded",
       "refund.failed",
@@ -446,7 +449,8 @@ locals {
     module.q_console_notifications.subscribed_event_types,
     module.q_api_billing.subscribed_event_types,
     module.q_billing_merchants.subscribed_event_types,
-    ["payment.failed", "refund.succeeded", "refund.failed", "dispute.evidence_submitted"],
+    ["payment.authorized", "payment.captured", "payment.canceled", "payment.failed",
+     "refund.succeeded", "refund.failed", "dispute.evidence_submitted"],
     ["dispute.opened"],
   ))
 
